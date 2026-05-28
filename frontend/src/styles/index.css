@@ -1,0 +1,506 @@
+/* frontend/src/styles/index.css */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #0f0f0f;
+    color: #e0e0e0;
+    min-height: 100vh;
+}
+
+/* ── Navbar ───────────────────────────────── */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1a1a1a;
+    border-bottom: 1px solid #2a2a2a;
+    padding: 14px 28px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.navbar-brand {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.navbar-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.navbar-links a {
+    color: #81c784;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.navbar-links a:hover {
+    text-decoration: underline;
+}
+
+.navbar-user {
+    color: #888;
+    font-size: 0.88rem;
+}
+
+.navbar-links button {
+    background: #2a2a2a;
+    color: #e0e0e0;
+    border: 1px solid #3a3a3a;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: background 0.2s;
+}
+
+.navbar-links button:hover {
+    background: #3a3a3a;
+}
+
+/* ── Auth Pages ───────────────────────────── */
+.auth-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 57px);
+    padding: 24px;
+}
+
+.auth-container {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 14px;
+    padding: 36px 32px;
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.auth-container h2 {
+    color: #fff;
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.auth-container input {
+    background: #0f0f0f;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #e0e0e0;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.auth-container input:focus {
+    border-color: #4caf50;
+}
+
+.auth-container button {
+    background: #2e7d32;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 11px;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: background 0.2s;
+}
+
+.auth-container button:hover:not(:disabled) {
+    background: #388e3c;
+}
+
+.auth-container button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.auth-link {
+    text-align: center;
+    font-size: 0.88rem;
+    color: #888;
+}
+
+.auth-link a {
+    color: #81c784;
+    text-decoration: none;
+}
+
+/* ── Chat Page ────────────────────────────── */
+.chat-page {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 28px 20px 120px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.welcome-card {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 14px;
+    padding: 24px;
+    color: #bbb;
+    font-size: 0.93rem;
+    line-height: 1.75;
+}
+
+.welcome-card h4 {
+    color: #fff;
+    font-size: 1.05rem;
+    margin-bottom: 10px;
+}
+
+.chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.chip {
+    background: #1e3a1e;
+    border: 1px solid #2d5a2d;
+    color: #81c784;
+    font-size: 0.78rem;
+    padding: 5px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.chip:hover {
+    background: #2a4a2a;
+}
+
+.chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.chat-bubble-wrapper {
+    display: flex;
+}
+
+.chat-bubble-wrapper.user {
+    justify-content: flex-end;
+}
+
+.chat-bubble-wrapper.assistant {
+    justify-content: flex-start;
+}
+
+.bubble {
+    max-width: 80%;
+    padding: 12px 16px;
+    font-size: 0.93rem;
+    line-height: 1.65;
+}
+
+.user-bubble {
+    background: #1e3a5f;
+    color: #e8f0fe;
+    border-radius: 18px 18px 4px 18px;
+}
+
+.assistant-bubble {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    color: #e0e0e0;
+    border-radius: 4px 18px 18px 18px;
+}
+
+/* Animated typing dots */
+.loading-bubble {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 16px 20px;
+}
+
+.dot {
+    width: 7px;
+    height: 7px;
+    background: #555;
+    border-radius: 50%;
+    display: inline-block;
+    animation: bounce 1.2s infinite ease-in-out;
+}
+
+.dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes bounce {
+
+    0%,
+    80%,
+    100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+
+    40% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+}
+
+.sources-line {
+    color: #888;
+    font-size: 0.76rem;
+    margin-bottom: 8px;
+}
+
+.answer-text {
+    font-size: 0.93rem;
+}
+
+/* Fixed input area */
+.chat-input-bar {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 780px;
+    display: flex;
+    gap: 10px;
+    padding: 0 20px;
+}
+
+.chat-input-bar textarea {
+    flex: 1;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 0.93rem;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.chat-input-bar textarea:focus {
+    border-color: #4caf50;
+}
+
+.chat-input-bar textarea:disabled {
+    opacity: 0.5;
+}
+
+.chat-input-bar button {
+    background: #2e7d32;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 0 22px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.chat-input-bar button:hover:not(:disabled) {
+    background: #388e3c;
+}
+
+.chat-input-bar button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.disclaimer {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    color: #cc0000;
+    text-align: center;
+    width: 100%;
+    max-width: 780px;
+    padding: 0 20px;
+}
+
+.chat-error {
+    text-align: center;
+}
+
+/* ── Admin Page ───────────────────────────── */
+.admin-page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.admin-page h2 {
+    color: #fff;
+    font-size: 1.3rem;
+}
+
+.admin-card {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.admin-card h3 {
+    color: #fff;
+    font-size: 1rem;
+    margin-bottom: 4px;
+}
+
+.upload-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.upload-row input[type='file'] {
+    color: #aaa;
+    font-size: 0.88rem;
+}
+
+.upload-row button {
+    background: #2e7d32;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.upload-row button:hover:not(:disabled) {
+    background: #388e3c;
+}
+
+.upload-row button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.upload-note {
+    color: #888;
+    font-size: 0.82rem;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 6px;
+}
+
+.admin-table th,
+.admin-table td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid #2a2a2a;
+    font-size: 0.88rem;
+}
+
+.admin-table th {
+    color: #aaa;
+    font-weight: 600;
+    background: #111;
+}
+
+.admin-table td {
+    color: #ddd;
+}
+
+.admin-table tr:last-child td {
+    border-bottom: none;
+}
+
+.delete-btn {
+    background: #7f1d1d;
+    color: #fca5a5;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    transition: background 0.2s;
+}
+
+.delete-btn:hover:not(:disabled) {
+    background: #991b1b;
+}
+
+.delete-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.role-badge {
+    font-size: 0.78rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.role-badge.admin {
+    background: #1a3a1a;
+    color: #4caf50;
+    border: 1px solid #2d5a2d;
+}
+
+.role-badge.user {
+    background: #1e2a3a;
+    color: #64b5f6;
+    border: 1px solid #1e3a5f;
+}
+
+/* ── Shared Utilities ─────────────────────── */
+.error-msg {
+    color: #f87171;
+    font-size: 0.85rem;
+}
+
+.success-msg {
+    color: #4caf50;
+    font-size: 0.85rem;
+}
+
+.empty-msg {
+    color: #555;
+    font-size: 0.88rem;
+}
