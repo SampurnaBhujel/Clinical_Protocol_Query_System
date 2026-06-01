@@ -57,7 +57,7 @@ def get_context(query: str) -> tuple[str, list[str]]:
 
 # System prompt follows the same design as the reference Streamlit app
 PROMPT_TEMPLATE = PromptTemplate.from_template(
-    """You are NepMedAI, a bilingual medical information assistant for Nepal.
+    """You are Clinical Protocol Query System, a bilingual medical information assistant for Nepal.
 
 LANGUAGE RULE — this is the most important rule:
 - If the question is in English only → reply entirely in English

@@ -1,0 +1,18 @@
+# Backend
+backend/.env
+backend/clinical.db
+backend/chroma_db_nepali/
+
+# Python cache
+**/__pycache__/
+*.pyc
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -45,6 +45,10 @@ def index_pdf(filepath: str, filename: str) -> None:
     # Tag each chunk with the filename so it appears as the citation source
     for chunk in chunks:
         chunk.metadata["source"] = filename
+
+        # added doc id in embedding to assist deletion
+        # chunk.metadata["doc_id"] = filename
+        # chunk.metadata["source"] = filename
         # page number is already set by PyPDFLoader; default to "?" if missing
         chunk.metadata["page"] = chunk.metadata.get("page", "?")
 
