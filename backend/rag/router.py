@@ -18,7 +18,16 @@ async def query(
         history = [{"role": m.role, "content": m.content} for m in request.history]
         result = run_rag_pipeline(request.question, history)
         return QueryResponse(answer=result["answer"], sources=result["sources"])
+    # except Exception as e:
+    #     error_str = str(e)
     except Exception as e:
+        import traceback
+
+        print("\n========== RAG ERROR ==========")
+        traceback.print_exc()
+        print("ERROR:", repr(e))
+        print("================================\n")
+
         error_str = str(e)
         # Map known API errors to user-friendly messages
         if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "quota" in error_str.lower():

@@ -1,8 +1,15 @@
 # backend/rag/pipeline.py
+from config import settings
+#print("GEMINI KEY LOADED:", bool(settings.GEMINI_API_KEY))
+
+import os
+import certifi
+
+os.environ["SSL_CERT_FILE"] = certifi.where()
+os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
 import warnings
 import logging
-import os
 
 warnings.filterwarnings("ignore")
 logging.getLogger("transformers").setLevel(logging.ERROR)
@@ -112,7 +119,7 @@ def run_rag_pipeline(question: str, history: list[dict]) -> dict:
         history_text = "No previous conversation."
 
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         google_api_key=settings.GEMINI_API_KEY,
         temperature=0.2  # low temperature for factual medical responses
     )

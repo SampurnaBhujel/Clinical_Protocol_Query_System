@@ -10,6 +10,9 @@ os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 import warnings
 import logging
 
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
 # Suppress noisy transformer warnings on startup
 warnings.filterwarnings("ignore")
 logging.getLogger("transformers").setLevel(logging.ERROR)
