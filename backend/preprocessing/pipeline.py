@@ -17,7 +17,10 @@ def get_embeddings() -> HuggingFaceEmbeddings:
     """Load the bilingual Nepali/English embedding model."""
     return HuggingFaceEmbeddings(
         model_name=settings.EMBEDDING_MODEL,
-        model_kwargs={"device": "cpu"}
+        model_kwargs={"device": "cpu"},
+        encode_kwargs={
+        "normalize_embeddings": True
+        }
     )
 
 

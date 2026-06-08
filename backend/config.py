@@ -13,7 +13,10 @@ class Settings(BaseSettings):
     DOCUMENTS_PATH: str = "documents"
 
     #EMBEDDING_MODEL: str = "jangedoo/all-MiniLM-L6-v2-nepali"
-    EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    #EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    #EMBEDDING_MODEL: str = "BAAI/bge-m3"
+    EMBEDDING_MODEL: str = "intfloat/multilingual-e5-base"
+
 
     class Config:
         #env_file = Path(__file__).resolve().parent / ".env"

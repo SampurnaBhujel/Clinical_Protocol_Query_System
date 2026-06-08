@@ -1,4 +1,5 @@
 # backend/rag/pipeline.py
+
 from config import settings
 #print("GEMINI KEY LOADED:", bool(settings.GEMINI_API_KEY))
 
@@ -11,8 +12,8 @@ os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 import warnings
 import logging
 
-warnings.filterwarnings("ignore")
-logging.getLogger("transformers").setLevel(logging.ERROR)
+warnings.filterwarnings("ignore")           # supress transformers __path__ warnings
+logging.getLogger("transformers").setLevel(logging.ERROR)  # only show real errors, now warnings
 
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -26,7 +27,10 @@ def get_embeddings() -> HuggingFaceEmbeddings:
     """Load the bilingual embedding model (shared with preprocessing)."""
     return HuggingFaceEmbeddings(
         model_name=settings.EMBEDDING_MODEL,
-        model_kwargs={"device": "cpu"}
+        model_kwargs={"device": "cpu"},
+        encode_kwargs={
+            "normalize_embeddings": True
+        }
     )
 
 
@@ -62,9 +66,9 @@ def get_context(query: str) -> tuple[str, list[str]]:
     return context, sources
 
 
-# System prompt follows the same design as the reference Streamlit app
+
 PROMPT_TEMPLATE = PromptTemplate.from_template(
-    """You are Clinical Protocol Query System, a bilingual medical information assistant for Nepal.
+    """You are Clinical Protocol Query System, a bilingual medical information assistant for Nepali users.
 
 LANGUAGE RULE — this is the most important rule:
 - If the question is in English only → reply entirely in English
