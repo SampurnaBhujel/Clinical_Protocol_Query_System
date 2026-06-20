@@ -1,10 +1,9 @@
-// frontend/src/pages/LoginPage.jsx
-
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { jwtDecode } from 'jwt-decode'
 import { useAuth } from '../context/AuthContext'
 import axiosClient from '../api/axiosClient'
+import Icon from '../components/Icon'
 
 export default function LoginPage() {
     const [username, setUsername] = useState('')
@@ -14,71 +13,76 @@ export default function LoginPage() {
     const { login } = useAuth()
     const navigate = useNavigate()
 
-    async function handleLogin() {
+    async function handleLogin(e) {
+        e?.preventDefault()
         if (!username.trim() || !password.trim()) {
-            setError('Please fill in all fields')
+            setError('Please enter your username and password.')
             return
         }
+
         setLoading(true)
         setError('')
         try {
             const formData = new URLSearchParams()
-            formData.append('username', username)
+            formData.append('username', username.trim())
             formData.append('password', password)
 
             const res = await axiosClient.post('/auth/login', formData, {
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
             })
-            // replaced below with above all lines inside try                    
-            //const res = await axiosClient.post('/auth/login', { username, password })
-
 
             const token = res.data.access_token
-            // Decode JWT to extract role and username without an extra API call
             const decoded = jwtDecode(token)
             login(token, decoded.role, decoded.sub)
-            // Redirect based on role
-            navigate(decoded.role === 'admin' ? '/admin' : '/')
+            navigate(decoded.role === 'admin' ? '/admin' : '/chat')
         } catch (err) {
-            setError(err.response?.data?.detail || 'Invalid username or password')
+            setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
         } finally {
             setLoading(false)
         }
     }
 
-    // Allow submitting with Enter key
-    function handleKeyDown(e) {
-        if (e.key === 'Enter') handleLogin()
-    }
-
     return (
-        <div className="auth-wrapper">
-            <div className="auth-container">
-                <h2>Login</h2>
-                {error && <p className="error-msg">{error}</p>}
-                <input
-                    placeholder="Username"
-                    value={username}
-                    onChange={e => setUsername(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    autoFocus
-                />
-                <input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                />
-                <button onClick={handleLogin} disabled={loading}>
-                    {loading ? 'Logging in...' : 'Login'}
-                </button>
-                <p className="auth-link">
-                    Don't have an account? <Link to="/register">Register</Link>
+        <main className="auth-page">
+            <section className="auth-card">
+                <div className="auth-heading">
+                    <span className="auth-icon"><Icon name="logIn" size={22} /></span>
+                    <h1>Login</h1>
+                    <p>Access your patient chatbot or admin dashboard.</p>
+                </div>
+
+                <form className="form-stack" onSubmit={handleLogin}>
+                    {error && <p className="alert error">{error}</p>}
+                    <label className="field">
+                        <span>Username</span>
+                        <input
+                            value={username}
+                            onChange={e => setUsername(e.target.value)}
+                            autoComplete="username"
+                            autoFocus
+                            placeholder="Enter username"
+                        />
+                    </label>
+                    <label className="field">
+                        <span>Password</span>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            autoComplete="current-password"
+                            placeholder="Enter password"
+                        />
+                    </label>
+                    <button className="button primary full" type="submit" disabled={loading}>
+                        <Icon name="lock" size={18} />
+                        {loading ? 'Signing in...' : 'Sign in'}
+                    </button>
+                </form>
+
+                <p className="auth-switch">
+                    New patient? <Link to="/register">Create an account</Link>
                 </p>
-            </div>
-        </div>
+            </section>
+        </main>
     )
 }

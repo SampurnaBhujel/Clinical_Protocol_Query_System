@@ -23,6 +23,7 @@ from database import engine, Base
 from auth.router import router as auth_router
 from rag.router import router as rag_router
 from admin.router import router as admin_router
+from chat.router import router as chat_router
 
 # Create all SQLite tables on startup
 Base.metadata.create_all(bind=engine)
@@ -41,6 +42,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(rag_router, prefix="/rag", tags=["RAG"])
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])
+app.include_router(chat_router, prefix="/chat", tags=["Chat"])
 
 @app.get("/")
 async def root():

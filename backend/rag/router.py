@@ -1,23 +1,75 @@
 # backend/rag/router.py
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from database import get_db
 from rag.schemas import QueryRequest, QueryResponse
 from rag.pipeline import run_rag_pipeline
 from auth.dependencies import get_current_user
 from auth.models import User
+from chat.models import ChatMessage, Conversation
 
 router = APIRouter()
+
+
+def _conversation_title(question: str) -> str:
+    title = " ".join(question.strip().split())
+    return title[:120] or "New conversation"
 
 @router.post("/query", response_model=QueryResponse)
 async def query(
     request: QueryRequest,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)  # any authenticated user can query
 ):
     try:
+        if request.conversation_id is None:
+            conversation = Conversation(
+                user_id=current_user.id,
+                title=_conversation_title(request.question)
+            )
+            db.add(conversation)
+            db.commit()
+            db.refresh(conversation)
+        else:
+            conversation = (
+                db.query(Conversation)
+                .filter(
+                    Conversation.id == request.conversation_id,
+                    Conversation.user_id == current_user.id
+                )
+                .first()
+            )
+            if not conversation:
+                raise HTTPException(status_code=404, detail="Conversation not found")
+
+        user_message = ChatMessage(
+            conversation_id=conversation.id,
+            role="user",
+            content=request.question
+        )
+        db.add(user_message)
+        db.commit()
+
         # Convert Pydantic history objects to plain dicts for the pipeline
         history = [{"role": m.role, "content": m.content} for m in request.history]
         result = run_rag_pipeline(request.question, history)
-        return QueryResponse(answer=result["answer"], sources=result["sources"])
+
+        assistant_message = ChatMessage(
+            conversation_id=conversation.id,
+            role="assistant",
+            content=result["answer"]
+        )
+        db.add(assistant_message)
+        db.commit()
+
+        return QueryResponse(
+            answer=result["answer"],
+            sources=result["sources"],
+            conversation_id=conversation.id
+        )
+    except HTTPException:
+        raise
     # except Exception as e:
     #     error_str = str(e)
     except Exception as e:

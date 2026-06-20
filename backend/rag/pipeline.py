@@ -1,47 +1,91 @@
-# backend/rag/pipeline.py
+import os
+import re
+import certifi
+import warnings
+import logging
+
+from langchain_chroma import Chroma
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import PromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_huggingface import HuggingFaceEmbeddings
 
 from config import settings
-#print("GEMINI KEY LOADED:", bool(settings.GEMINI_API_KEY))
-
-import os
-import certifi
 
 os.environ["SSL_CERT_FILE"] = certifi.where()
 os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
-import warnings
-import logging
+warnings.filterwarnings("ignore")
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
-warnings.filterwarnings("ignore")           # supress transformers __path__ warnings
-logging.getLogger("transformers").setLevel(logging.ERROR)  # only show real errors, now warnings
+MAX_EVIDENCE = 6
+FETCH_K = 12
+MAX_CHROMA_DISTANCE = 1.45
 
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_chroma import Chroma
-from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from config import settings
+NO_ANSWER_EN = "I could not find this information in the available clinical documents."
+NO_ANSWER_NE = "उपलब्ध क्लिनिकल दस्तावेजहरूमा यो जानकारी फेला परेन।"
+NO_ANSWER_MIXED = (
+    "I could not find this information in the available clinical documents. "
+    "उपलब्ध क्लिनिकल दस्तावेजहरूमा यो जानकारी फेला परेन।"
+)
 
 
 def get_embeddings() -> HuggingFaceEmbeddings:
-    """Load the bilingual embedding model (shared with preprocessing)."""
     return HuggingFaceEmbeddings(
         model_name=settings.EMBEDDING_MODEL,
         model_kwargs={"device": "cpu"},
-        encode_kwargs={
-            "normalize_embeddings": True
-        }
+        encode_kwargs={"normalize_embeddings": True}
     )
 
 
-def get_context(query: str) -> tuple[str, list[str]]:
-    """
-    Perform semantic similarity search against ChromaDB.
+def _is_nepali(text: str) -> bool:
+    return bool(re.search(r"[\u0900-\u097F]", text))
 
-    Returns:
-        context: Concatenated text of the top-4 most relevant chunks.
-        sources: Deduplicated list of source citations (filename — page).
-    """
+
+def _has_english(text: str) -> bool:
+    return bool(re.search(r"[A-Za-z]", text))
+
+
+def _language_instruction(question: str) -> str:
+    has_nepali = _is_nepali(question)
+    has_english = _has_english(question)
+
+    if has_nepali and has_english:
+        return (
+            "The question mixes Nepali and English. Reply in the same mixed style: "
+            "use Nepali for Nepali terms/phrases and English for English terms/phrases. "
+            "Do not translate the whole answer into only one language."
+        )
+    if has_nepali:
+        return "The question is in Nepali. Reply entirely in Nepali, except citation numbers like [1]."
+    return "The question is in English. Reply entirely in English, except citation numbers like [1]."
+
+
+def _fallback_answer(question: str) -> str:
+    if _is_nepali(question) and _has_english(question):
+        return NO_ANSWER_MIXED
+    return NO_ANSWER_NE if _is_nepali(question) else NO_ANSWER_EN
+
+
+def _clean_chunk(text: str) -> str:
+    text = re.sub(r"^\s*passage:\s*", "", text or "", flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _format_page(page) -> str:
+    if page is None or page == "":
+        return "?"
+    try:
+        return str(int(page) + 1)
+    except (TypeError, ValueError):
+        return str(page)
+
+
+def _source_name(source: str) -> str:
+    return os.path.basename(source or "Unknown")
+
+
+def get_context(query: str) -> tuple[str, list[dict]]:
     embeddings = get_embeddings()
     vectorstore = Chroma(
         persist_directory=settings.CHROMA_STORE_PATH,
@@ -49,91 +93,144 @@ def get_context(query: str) -> tuple[str, list[str]]:
         collection_name="clinical_docs"
     )
 
-    results = vectorstore.similarity_search(query=query, k=4)
+    raw_results = vectorstore.similarity_search_with_score(
+        query=f"query: {query}",
+        k=FETCH_K
+    )
 
-    context = ""
-    sources = []
+    # Chroma returns distance scores: lower means more similar.
+    ranked_results = sorted(raw_results, key=lambda item: item[1])
+    relevant_results = [
+        (doc, score)
+        for doc, score in ranked_results
+        if score <= MAX_CHROMA_DISTANCE
+    ][:MAX_EVIDENCE]
 
-    for doc in results:
-        context += doc.page_content + "\n"
-        # Build a readable citation string from metadata
-        source_name = os.path.basename(doc.metadata.get("source", "Unknown"))
-        page = doc.metadata.get("page", "?")
-        entry = f"{source_name} — p.{page}"
-        if entry not in sources:
-            sources.append(entry)
+    evidence = []
+    context_parts = []
 
-    return context, sources
+    for evidence_id, (doc, score) in enumerate(relevant_results, 1):
+        text = _clean_chunk(doc.page_content)
+        if not text:
+            continue
 
+        source = _source_name(doc.metadata.get("source"))
+        page = _format_page(doc.metadata.get("page"))
+
+        item = {
+            "id": evidence_id,
+            "source": source,
+            "page": page,
+            "score": float(score),
+            "text": text
+        }
+        evidence.append(item)
+        context_parts.append(
+            f"[{evidence_id}] Source: {source}, page {page}\n{text}"
+        )
+
+    return "\n\n".join(context_parts), evidence
 
 
 PROMPT_TEMPLATE = PromptTemplate.from_template(
-    """You are Clinical Protocol Query System, a bilingual medical information assistant for Nepali users.
+    """
+You are Clinical Protocol Query System, a medical information assistant for Nepali users.
 
-LANGUAGE RULE — this is the most important rule:
-- If the question is in English only → reply entirely in English
-- If the question is in Nepali only → reply entirely in Nepali
-- If the question mixes both languages → reply in the same mix
-- Never switch language. Match exactly what the user used.
+Your answer must be grounded only in the Evidence section below.
 
-Other rules:
-- Answer using ONLY the given context. Do not make up information.
-- If the answer is not found in the context, say so clearly in the user's language.
-- Be concise and friendly.
-- Do NOT add any disclaimer at the end — that is handled separately by the UI.
-- Use conversation history to understand follow-up words like "their", "it", "those".
+Rules:
+- Use ONLY the Evidence. Do not use outside medical knowledge.
+- Every medical claim must end with one or more citations like [1] or [2].
+- Use only citation numbers that appear in the Evidence.
+- Do not cite conversation history. History is only for resolving follow-up references.
+- If the Evidence does not contain the answer, say exactly:
+  English: "I could not find this information in the available clinical documents."
+  Nepali: "उपलब्ध क्लिनिकल दस्तावेजहरूमा यो जानकारी फेला परेन।"
+  Mixed Nepali and English: "I could not find this information in the available clinical documents. उपलब्ध क्लिनिकल दस्तावेजहरूमा यो जानकारी फेला परेन।"
+- Do not add citations to the no-information sentence.
+- Follow this response language rule exactly:
+  {language_instruction}
+- Be concise, factual, and patient-friendly.
+- Do not add diagnosis, emergency, or treatment advice unless it is present in Evidence.
+- Do not mention "Evidence", "context", or "source files" in the answer.
 
 Conversation History:
 {history}
 
-Context from knowledge base:
+Evidence:
 {context}
 
-Current Question: {question}
+Question:
+{question}
 
-Answer:"""
+Answer:
+"""
 )
 
 
+def _history_text(history: list[dict]) -> str:
+    recent_messages = history[-6:]
+    lines = []
+    for message in recent_messages:
+        role = "User" if message.get("role") == "user" else "Assistant"
+        content = str(message.get("content", "")).strip()
+        if content:
+            lines.append(f"{role}: {content}")
+    return "\n".join(lines) if lines else "No previous conversation."
+
+
+def _used_citation_ids(answer: str, max_id: int) -> set[int]:
+    citation_ids = {int(match) for match in re.findall(r"\[(\d+)\]", answer)}
+    invalid = sorted(citation_id for citation_id in citation_ids if citation_id < 1 or citation_id > max_id)
+    if invalid:
+        raise ValueError(f"Invalid citations returned by model: {invalid}")
+    return citation_ids
+
+
+def _answer_has_citations(answer: str) -> bool:
+    return bool(re.search(r"\[\d+\]", answer))
+
+
 def run_rag_pipeline(question: str, history: list[dict]) -> dict:
-    """
-    Full RAG pipeline:
-      1. Retrieve relevant chunks from ChromaDB
-      2. Build conversation history string (last 6 messages = 3 turns)
-      3. Construct augmented prompt
-      4. Generate response via Gemini
-      5. Return answer + source citations
-
-    Args:
-        question: The user's current query.
-        history: List of previous messages [{"role": ..., "content": ...}]
-
-    Returns:
-        dict with keys "answer" and "sources"
-    """
-    context, sources = get_context(question)
-
-    # Only pass the last 6 messages (3 turns) to keep the prompt concise
-    recent = history[-6:]
-    history_text = ""
-    for msg in recent:
-        role = "User" if msg["role"] == "user" else "Assistant"
-        history_text += f"{role}: {msg['content']}\n"
-    if not history_text:
-        history_text = "No previous conversation."
+    context, evidence = get_context(question)
+    if not evidence:
+        return {"answer": _fallback_answer(question), "sources": []}
 
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash",
         google_api_key=settings.GEMINI_API_KEY,
-        temperature=0.2  # low temperature for factual medical responses
+        temperature=0,
+        top_p=0.2
     )
 
     chain = PROMPT_TEMPLATE | llm | StrOutputParser()
-
     answer = chain.invoke({
         "context": context,
         "question": question,
-        "history": history_text
-    })
+        "history": _history_text(history),
+        "language_instruction": _language_instruction(question)
+    }).strip()
+
+    if answer in {NO_ANSWER_EN, NO_ANSWER_NE, NO_ANSWER_MIXED}:
+        return {"answer": answer, "sources": []}
+
+    if not _answer_has_citations(answer):
+        return {"answer": _fallback_answer(question), "sources": []}
+
+    try:
+        used_ids = _used_citation_ids(answer, len(evidence))
+    except ValueError:
+        return {"answer": _fallback_answer(question), "sources": []}
+
+    sources = [
+        {
+            "id": item["id"],
+            "source": item["source"],
+            "page": item["page"],
+            "excerpt": item["text"][:260]
+        }
+        for item in evidence
+        if item["id"] in used_ids
+    ]
 
     return {"answer": answer, "sources": sources}

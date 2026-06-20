@@ -1,17 +1,15 @@
-// frontend/src/pages/ChatPage.jsx
-
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import axiosClient from '../api/axiosClient'
 import ResponseCard from '../components/ResponseCard'
+import Icon from '../components/Icon'
 
-const DISCLAIMER =
-    '⚠️ Results may not be 100% accurate. Please consult a medical professional. | परिणामहरू १००% सही नहुन सक्छ। कृपया चिकित्सकसँग परामर्श लिनुहोस्।'
+const DISCLAIMER = 'This assistant is for protocol guidance only. It is not a diagnosis. Please consult a qualified medical professional for personal medical care.'
 
 const SUGGESTIONS = [
-    'Which disease is common in Nepal?',
-    'टाइफाइडका लक्षणहरू के हुन्?',
-    'How to prevent malaria?',
-    'बच्चाको खोकीको उपचार के हो?',
+    'टाइफाइडका सामान्य लक्षणहरू के हुन्?',
+    'How can dengue fever be prevented?',
+    'बच्चामा निमोनियाको चेतावनी संकेत के हुन्?',
+    'What should I do for dehydration symptoms?'
 ]
 
 export default function ChatPage() {
@@ -19,19 +17,63 @@ export default function ChatPage() {
     const [question, setQuestion] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [conversations, setConversations] = useState([])
+    const [selectedConversationId, setSelectedConversationId] = useState(null)
+    const [readOnlyMode, setReadOnlyMode] = useState(false)
     const bottomRef = useRef(null)
 
-    // Auto-scroll to the latest message
+    const fetchConversations = useCallback(async () => {
+        try {
+            const res = await axiosClient.get('/chat/history')
+            setConversations(res.data || [])
+        } catch {
+            setError('Unable to load chat history.')
+        }
+    }, [])
+
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+        fetchConversations()
+    }, [fetchConversations])
+
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
     }, [messages, loading])
 
+    function startNewConversation() {
+        setMessages([])
+        setQuestion('')
+        setError('')
+        setSelectedConversationId(null)
+        setReadOnlyMode(false)
+    }
+
+    async function openConversation(conversationId) {
+        setLoading(true)
+        setError('')
+        try {
+            const res = await axiosClient.get(`/chat/history/${conversationId}`)
+            setMessages(
+                (res.data.messages || []).map(message => ({
+                    role: message.role,
+                    content: message.content,
+                    sources: []
+                }))
+            )
+            setQuestion('')
+            setSelectedConversationId(res.data.id)
+            setReadOnlyMode(true)
+        } catch (err) {
+            setError(err.response?.data?.detail || 'Unable to open this conversation.')
+        } finally {
+            setLoading(false)
+        }
+    }
+
     async function handleQuery(questionText) {
-        const q = questionText || question
-        if (!q.trim() || loading) return
+        const q = (questionText || question).trim()
+        if (!q || loading || readOnlyMode) return
 
         const userMessage = { role: 'user', content: q }
-        // Append user message and clear input immediately for responsive feel
         const updatedHistory = [...messages, userMessage]
         setMessages(updatedHistory)
         setQuestion('')
@@ -41,18 +83,21 @@ export default function ChatPage() {
         try {
             const res = await axiosClient.post('/rag/query', {
                 question: q,
-                // Send full conversation history so the backend can handle follow-up questions
+                conversation_id: selectedConversationId,
                 history: updatedHistory.map(m => ({ role: m.role, content: m.content }))
             })
-            const assistantMessage = {
-                role: 'assistant',
-                content: res.data.answer,
-                sources: res.data.sources
-            }
-            setMessages(prev => [...prev, assistantMessage])
+            setSelectedConversationId(res.data.conversation_id)
+            setMessages(prev => [
+                ...prev,
+                {
+                    role: 'assistant',
+                    content: res.data.answer || 'No answer returned.',
+                    sources: res.data.sources || []
+                }
+            ])
+            fetchConversations()
         } catch (err) {
-            setError(err.response?.data?.detail || 'Failed to get a response. Please try again.')
-            // Remove the optimistically added user message on failure
+            setError(err.response?.data?.detail || 'Unable to get a response. Please try again.')
             setMessages(prev => prev.slice(0, -1))
         } finally {
             setLoading(false)
@@ -60,7 +105,6 @@ export default function ChatPage() {
     }
 
     function handleKeyDown(e) {
-        // Submit on Enter; allow Shift+Enter for newlines
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault()
             handleQuery()
@@ -68,74 +112,135 @@ export default function ChatPage() {
     }
 
     return (
-        <div className="chat-page">
-
-            {/* Welcome card shown before the first message */}
-            {messages.length === 0 && (
-                <div className="welcome-card">
-                    <h4>नमस्ते! How can I help you today?</h4>
-                    <p>
-                        Ask health questions in <strong>English</strong>,{' '}
-                        <strong>Nepali (नेपाली)</strong>, or both.<br />
-                        I will answer in the same language you use.
-                    </p>
-                    <div className="chip-row">
-                        {SUGGESTIONS.map((s, i) => (
-                            <span
-                                key={i}
-                                className="chip"
-                                onClick={() => handleQuery(s)}
-                            >
-                                {s}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Conversation messages */}
-            <div className="chat-messages">
-                {messages.map((msg, i) => (
-                    <div key={i} className={`chat-bubble-wrapper ${msg.role}`}>
-                        {msg.role === 'user' ? (
-                            <div className="bubble user-bubble">{msg.content}</div>
-                        ) : (
-                            <ResponseCard answer={msg.content} sources={msg.sources || []} />
-                        )}
-                    </div>
-                ))}
-
-                {/* Typing indicator while waiting for the API */}
-                {loading && (
-                    <div className="chat-bubble-wrapper assistant">
-                        <div className="bubble assistant-bubble loading-bubble">
-                            <span className="dot" /><span className="dot" /><span className="dot" />
+        <main className="workspace-page">
+            <section className="workspace-shell">
+                <aside className="patient-sidebar">
+                    <div className="sidebar-header">
+                        <span className="sidebar-icon"><Icon name="activity" size={22} /></span>
+                        <div>
+                            <h1>User Page</h1>
+                            <p>Ask clinical protocol questions.</p>
                         </div>
                     </div>
-                )}
+                    <div className="safety-note">
+                        <Icon name="shield" size={19} />
+                        <p>{DISCLAIMER}</p>
+                    </div>
 
-                {/* Invisible anchor for auto-scroll */}
-                <div ref={bottomRef} />
-            </div>
+                    <button className="button primary full" type="button" onClick={startNewConversation}>
+                        <Icon name="plus" size={18} />
+                        New Conversation
+                    </button>
 
-            {error && <p className="error-msg chat-error">{error}</p>}
+                    {conversations.length > 0 && (
+                        <div className="quick-prompts">
+                            <h2>History</h2>
+                            <div className="history-list">
+                                {conversations.map(conversation => (
+                                    <button
+                                        key={conversation.id}
+                                        type="button"
+                                        className="history-item"
+                                        onClick={() => openConversation(conversation.id)}
+                                        aria-current={selectedConversationId === conversation.id && readOnlyMode ? 'true' : undefined}
+                                    >
+                                        {conversation.title}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
-            {/* Fixed input bar at the bottom */}
-            <div className="chat-input-bar">
-                <textarea
-                    rows={2}
-                    placeholder="Type your health question... / यहाँ आफ्नो प्रश्न टाइप गर्नुहोस्..."
-                    value={question}
-                    onChange={e => setQuestion(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    disabled={loading}
-                />
-                <button onClick={() => handleQuery()} disabled={loading}>
-                    {loading ? '...' : 'Send'}
-                </button>
-            </div>
+                    <div className="quick-prompts">
+                        <h2>Suggested questions</h2>
+                        {SUGGESTIONS.map(prompt => (
+                            <button
+                                key={prompt}
+                                type="button"
+                                className="prompt-button"
+                                onClick={() => handleQuery(prompt)}
+                                disabled={loading || readOnlyMode}
+                            >
+                                <Icon name="chevronRight" size={16} />
+                                {prompt}
+                            </button>
+                        ))}
+                    </div>
+                </aside>
 
-            <p className="disclaimer">{DISCLAIMER}</p>
-        </div>
+                <section className="chat-panel" aria-label="Medical chatbot conversation">
+                    <div className="chat-header">
+                        <div>
+                            <span className="eyebrow">
+                                <Icon name="bookOpen" size={16} />
+                                Protocol search
+                            </span>
+                            <h2>Clinical Assistant</h2>
+                        </div>
+                        <span className="status-badge">
+                            <span className="status-dot" />
+                            {readOnlyMode ? 'Read only' : 'Ready'}
+                        </span>
+                    </div>
+
+                    {readOnlyMode && (
+                        <div className="readonly-banner">
+                            Viewing previous conversation (read only)
+                        </div>
+                    )}
+
+                    <div className="chat-messages">
+                        {messages.length === 0 && (
+                            <div className="empty-state">
+                                <Icon name="messageCircle" size={34} />
+                                <h3>Start with a health question</h3>
+                                <p>Use Nepali, English, or both. Answers include available source document names.</p>
+                            </div>
+                        )}
+
+                        {messages.map((msg, index) => (
+                            <div key={`${msg.role}-${index}`} className={`message-row ${msg.role}`}>
+                                {msg.role === 'user' ? (
+                                    <div className="message-bubble user-message">{msg.content}</div>
+                                ) : (
+                                    <ResponseCard answer={msg.content} sources={msg.sources || []} />
+                                )}
+                            </div>
+                        ))}
+
+                        {loading && !readOnlyMode && (
+                            <div className="message-row assistant">
+                                <div className="message-bubble assistant-message typing">
+                                    <span />
+                                    <span />
+                                    <span />
+                                </div>
+                            </div>
+                        )}
+
+                        <div ref={bottomRef} />
+                    </div>
+
+                    {error && <p className="alert error chat-alert">{error}</p>}
+
+                    {!readOnlyMode && (
+                        <form className="chat-input-area" onSubmit={e => { e.preventDefault(); handleQuery() }}>
+                            <textarea
+                                rows={2}
+                                placeholder="Type your health question... / यहाँ आफ्नो प्रश्न लेख्नुहोस्..."
+                                value={question}
+                                onChange={e => setQuestion(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                disabled={loading}
+                            />
+                            <button className="button primary send-button" type="submit" disabled={loading || !question.trim()}>
+                                <Icon name="send" size={18} />
+                                Send
+                            </button>
+                        </form>
+                    )}
+                </section>
+            </section>
+        </main>
     )
 }

@@ -1,8 +1,7 @@
-// frontend/src/pages/RegisterPage.jsx
-
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import axiosClient from '../api/axiosClient'
+import Icon from '../components/Icon'
 
 export default function RegisterPage() {
     const [username, setUsername] = useState('')
@@ -13,61 +12,83 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false)
     const navigate = useNavigate()
 
-    async function handleRegister() {
+    async function handleRegister(e) {
+        e?.preventDefault()
         if (!username.trim() || !email.trim() || !password.trim()) {
-            setError('Please fill in all fields')
+            setError('Please complete all fields.')
             return
         }
+
         setLoading(true)
         setError('')
+        setSuccess('')
         try {
-            await axiosClient.post('/auth/register', { username, email, password })
-            setSuccess('Registered successfully! Redirecting to login...')
-            setTimeout(() => navigate('/login'), 1500)
+            await axiosClient.post('/auth/register', {
+                username: username.trim(),
+                email: email.trim(),
+                password
+            })
+            setSuccess('Account created. Redirecting to login...')
+            setTimeout(() => navigate('/login'), 900)
         } catch (err) {
-            setError(err.response?.data?.detail || 'Registration failed')
+            setError(err.response?.data?.detail || 'Registration failed. Please try again.')
         } finally {
             setLoading(false)
         }
     }
 
-    function handleKeyDown(e) {
-        if (e.key === 'Enter') handleRegister()
-    }
-
     return (
-        <div className="auth-wrapper">
-            <div className="auth-container">
-                <h2>Register</h2>
-                {error && <p className="error-msg">{error}</p>}
-                {success && <p className="success-msg">{success}</p>}
-                <input
-                    placeholder="Username"
-                    value={username}
-                    onChange={e => setUsername(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    autoFocus
-                />
-                <input
-                    placeholder="Email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                />
-                <input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                />
-                <button onClick={handleRegister} disabled={loading}>
-                    {loading ? 'Registering...' : 'Register'}
-                </button>
-                <p className="auth-link">
-                    Already have an account? <Link to="/login">Login</Link>
+        <main className="auth-page">
+            <section className="auth-card">
+                <div className="auth-heading">
+                    <span className="auth-icon"><Icon name="user" size={22} /></span>
+                    <h1>Create Account</h1>
+                    <p>Register to ask medical protocol questions safely.</p>
+                </div>
+
+                <form className="form-stack" onSubmit={handleRegister}>
+                    {error && <p className="alert error">{error}</p>}
+                    {success && <p className="alert success">{success}</p>}
+                    <label className="field">
+                        <span>Username</span>
+                        <input
+                            value={username}
+                            onChange={e => setUsername(e.target.value)}
+                            autoComplete="username"
+                            autoFocus
+                            placeholder="Choose username"
+                        />
+                    </label>
+                    <label className="field">
+                        <span>Email</span>
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            autoComplete="email"
+                            placeholder="you@example.com"
+                        />
+                    </label>
+                    <label className="field">
+                        <span>Password</span>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            autoComplete="new-password"
+                            placeholder="Minimum 6 characters"
+                        />
+                    </label>
+                    <button className="button primary full" type="submit" disabled={loading}>
+                        <Icon name="check" size={18} />
+                        {loading ? 'Creating account...' : 'Register'}
+                    </button>
+                </form>
+
+                <p className="auth-switch">
+                    Already registered? <Link to="/login">Login</Link>
                 </p>
-            </div>
-        </div>
+            </section>
+        </main>
     )
 }

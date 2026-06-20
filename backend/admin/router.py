@@ -4,15 +4,25 @@ import os
 import shutil
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
+from langchain_chroma import Chroma
 from database import get_db
 from auth.dependencies import require_admin
 from auth.models import User
 from admin.models import Document
 from admin.schemas import DocumentOut, UserOut
-from preprocessing.pipeline import index_pdf
+from preprocessing.pipeline import get_embeddings, index_pdf
 from config import settings
 
 router = APIRouter()
+
+
+def delete_document_vectors(filename: str) -> None:
+    vectorstore = Chroma(
+        persist_directory=settings.CHROMA_STORE_PATH,
+        embedding_function=get_embeddings(),
+        collection_name="clinical_docs"
+    )
+    vectorstore._collection.delete(where={"doc_id": filename})
 
 @router.post("/documents/upload", response_model=DocumentOut)
 async def upload_document(
@@ -96,13 +106,16 @@ async def delete_document(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
+    try:
+        delete_document_vectors(doc.filename)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Vector cleanup failed: {str(e)}")
+
     # Remove the physical PDF file if it still exists
     if os.path.exists(doc.filepath):
         os.remove(doc.filepath)
 
     # Remove from SQLite
-    # Note: ChromaDB chunks from this document remain in the vector store.
-    # To fully remove them, a ChromaDB delete by metadata filter would be needed.
     db.delete(doc)
     db.commit()
     return {"message": f"{doc.filename} deleted successfully"}
