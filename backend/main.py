@@ -24,9 +24,11 @@ from auth.router import router as auth_router
 from rag.router import router as rag_router
 from admin.router import router as admin_router
 from chat.router import router as chat_router
+from chat.migrations import ensure_chat_message_columns
 
 # Create all SQLite tables on startup
 Base.metadata.create_all(bind=engine)
+ensure_chat_message_columns()
 
 app = FastAPI(title="Clinical Protocol Query System")
 

@@ -5,6 +5,8 @@ from pathlib import Path
 
 class Settings(BaseSettings):
     GEMINI_API_KEY: str
+    GROQ_API_KEY: str
+
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
@@ -13,8 +15,6 @@ class Settings(BaseSettings):
     DOCUMENTS_PATH: str = "documents"
 
     #EMBEDDING_MODEL: str = "jangedoo/all-MiniLM-L6-v2-nepali"
-    #EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
-    #EMBEDDING_MODEL: str = "BAAI/bge-m3"
     EMBEDDING_MODEL: str = "intfloat/multilingual-e5-base"
 
 

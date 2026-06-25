@@ -2,6 +2,7 @@ import { useState } from 'react'
 import DocumentUpload from '../components/DocumentUpload'
 import DocumentList from '../components/DocumentList'
 import UserList from '../components/UserList'
+import EvaluationDashboard from '../components/EvaluationDashboard'
 import Icon from '../components/Icon'
 
 export default function AdminPage() {
@@ -59,6 +60,7 @@ export default function AdminPage() {
                     <UserList onCountChange={setUserCount} />
                 </section>
             </div>
+            <EvaluationDashboard />
         </main>
     )
 }

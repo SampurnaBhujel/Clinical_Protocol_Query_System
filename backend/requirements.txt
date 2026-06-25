@@ -14,6 +14,7 @@ langchain-community
 langchain-text-splitters
 langchain-huggingface
 langchain-google-genai
+langchain-groq
 langchain-chroma
 chromadb
 sentence-transformers

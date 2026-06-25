@@ -566,6 +566,10 @@ a {
     text-align: left;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
 }
 
 .history-item:hover,
@@ -573,6 +577,13 @@ a {
     border-color: var(--primary);
     background: var(--primary-soft);
     color: var(--primary-strong);
+}
+
+.history-delete {
+    flex: 0 0 auto;
+    color: var(--danger);
+    font-size: 0.76rem;
+    font-weight: 900;
 }
 
 .prompt-button {
@@ -681,6 +692,34 @@ a {
     border: 1px solid var(--border);
 }
 
+.confidence-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 10px;
+    min-height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 900;
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+.confidence-badge.high {
+    color: var(--success);
+    background: var(--success-soft);
+}
+
+.confidence-badge.medium {
+    color: var(--warning);
+    background: color-mix(in srgb, var(--warning), transparent 91%);
+}
+
+.confidence-badge.low {
+    color: var(--danger);
+    background: var(--danger-soft);
+}
+
 .source-list {
     display: grid;
     gap: 8px;
@@ -726,6 +765,46 @@ a {
 .answer-text p:last-child {
     margin-bottom: 0;
 }
+
+
+.answer-text {
+    line-height: 1.7;
+}
+
+.answer-text p {
+    margin: 0 0 10px;
+}
+
+.answer-text ul,
+.answer-text ol {
+    padding-left: 24px;
+    margin: 10px 0;
+}
+
+.answer-text li {
+    margin: 4px 0;
+}
+
+.answer-text h1,
+.answer-text h2,
+.answer-text h3 {
+    margin: 16px 0 10px;
+}
+
+.answer-text code {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--surface);
+    font-family: monospace;
+}
+
+.answer-text pre {
+    overflow-x: auto;
+    padding: 12px;
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+
 
 .typing {
     display: inline-flex;
@@ -847,6 +926,24 @@ a {
 
 .admin-card {
     padding: 20px;
+}
+
+.evaluation-card {
+    margin-top: 20px;
+}
+
+.evaluation-search {
+    margin-top: 16px;
+    max-width: 520px;
+}
+
+.evaluation-table .data-table {
+    min-width: 980px;
+}
+
+.evaluation-table td {
+    max-width: 260px;
+    vertical-align: top;
 }
 
 .upload-box {
@@ -1073,6 +1170,7 @@ a {
         min-width: 520px;
     }
 }
+<<<<<<< HEAD
 
 
 
@@ -1098,3 +1196,5 @@ a {
     width: auto;
     opacity: 0.8;
 }
+=======
+>>>>>>> 01dc14d0b3b5e41d0f2b3070bb785e98f3bb92e9
