@@ -3,6 +3,7 @@ import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import Icon from './Icon'
+import logo from "../assets/logo.png";
 
 export default function Navbar() {
     const { token, role, username, logout } = useAuth()
@@ -18,14 +19,13 @@ export default function Navbar() {
         <header className="site-header">
             <nav className="navbar" aria-label="Primary navigation">
                 <Link to="/" className="brand">
-                    <span className="brand-mark" aria-hidden="true">
-                        <Icon name="heartPulse" size={22} />
-                    </span>
-                    <span>
-                        <strong>स्वास्थ्य सहायक</strong>
-                        <small>Clinical Protocol RAG</small>
-                    </span>
-                </Link>
+      
+      <span className="brand-mark" aria-hidden="true">
+        <img src={logo} alt="Logo" className="logo" />
+      </span>
+
+
+    </Link>
 
                 <div className="nav-actions">
                     <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
@@ -59,9 +59,7 @@ export default function Navbar() {
                         </>
                     ) : (
                         <>
-                            <button className="icon-button" type="button" onClick={toggleTheme} title="Toggle theme">
-                                <Icon name={theme === 'light' ? 'moon' : 'sun'} size={18} />
-                            </button>
+                            
                             <NavLink to="/login" className="button ghost compact">
                                 <Icon name="logIn" size={17} />
                                 Login
@@ -70,6 +68,9 @@ export default function Navbar() {
                                 <Icon name="user" size={17} />
                                 Register
                             </NavLink>
+                            <button className="icon-button" type="button" onClick={toggleTheme} title="Toggle theme">
+                                <Icon name={theme === 'light' ? 'moon' : 'sun'} size={18} />
+                            </button>
                         </>
                     )}
                 </div>

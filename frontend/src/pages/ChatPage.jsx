@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import axiosClient from '../api/axiosClient'
 import ResponseCard from '../components/ResponseCard'
 import Icon from '../components/Icon'
+import { useAuth } from '../context/AuthContext'
 
 const DISCLAIMER = 'This assistant is for protocol guidance only. It is not a diagnosis. Please consult a qualified medical professional for personal medical care.'
 
@@ -13,6 +14,7 @@ const SUGGESTIONS = [
 ]
 
 export default function ChatPage() {
+    const { username } = useAuth()
     const [messages, setMessages] = useState([])
     const [question, setQuestion] = useState('')
     const [loading, setLoading] = useState(false)
@@ -118,7 +120,7 @@ export default function ChatPage() {
                     <div className="sidebar-header">
                         <span className="sidebar-icon"><Icon name="activity" size={22} /></span>
                         <div>
-                            <h1>User Page</h1>
+                            <h1>Hello, {username}</h1>
                             <p>Ask clinical protocol questions.</p>
                         </div>
                     </div>
@@ -177,10 +179,10 @@ export default function ChatPage() {
                             </span>
                             <h2>Clinical Assistant</h2>
                         </div>
-                        <span className="status-badge">
+                        {/* <span className="status-badge">
                             <span className="status-dot" />
                             {readOnlyMode ? 'Read only' : 'Ready'}
-                        </span>
+                        </span> */}
                     </div>
 
                     {readOnlyMode && (
