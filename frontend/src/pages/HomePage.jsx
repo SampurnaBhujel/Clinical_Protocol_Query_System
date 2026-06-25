@@ -20,7 +20,8 @@ export default function HomePage() {
                         <Icon name="stethoscope" size={17} />
                         Nepal clinical protocol assistant
                     </span>
-                    <h1>स्वास्थ्य सहायक</h1>
+                    {/* <h1>स्वास्थ्य सहायक</h1> */}
+                    <h1>स्वास्थ्यAI</h1>
                     <p className="hero-lede">
                         A medical RAG chatbot for Nepali users to ask health questions and receive
                         careful answers from approved clinical protocol documents.

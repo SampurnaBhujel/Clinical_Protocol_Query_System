@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ConversationSummary(BaseModel):
@@ -17,6 +17,8 @@ class ConversationSummary(BaseModel):
 class ConversationMessage(BaseModel):
     role: str
     content: str
+    sources: list[dict] = Field(default_factory=list)
+    confidence: str | None = None
 
     class Config:
         from_attributes = True

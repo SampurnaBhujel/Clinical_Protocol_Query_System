@@ -1,5 +1,7 @@
 # backend/rag/router.py
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
@@ -43,6 +45,17 @@ async def query(
             if not conversation:
                 raise HTTPException(status_code=404, detail="Conversation not found")
 
+        previous_messages = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.conversation_id == conversation.id)
+            .order_by(ChatMessage.id.asc())
+            .all()
+        )
+        history = [
+            {"role": message.role, "content": message.content}
+            for message in previous_messages
+        ]
+
         user_message = ChatMessage(
             conversation_id=conversation.id,
             role="user",
@@ -51,20 +64,21 @@ async def query(
         db.add(user_message)
         db.commit()
 
-        # Convert Pydantic history objects to plain dicts for the pipeline
-        history = [{"role": m.role, "content": m.content} for m in request.history]
-        result = run_rag_pipeline(request.question, history)
+        result = run_rag_pipeline(request.question, history, conversation_id=conversation.id)
 
         assistant_message = ChatMessage(
             conversation_id=conversation.id,
             role="assistant",
-            content=result["answer"]
+            content=result["answer"],
+            sources_json=json.dumps(result["sources"], ensure_ascii=False),
+            confidence=result["confidence"]
         )
         db.add(assistant_message)
         db.commit()
 
         return QueryResponse(
             answer=result["answer"],
+            confidence=result["confidence"],
             sources=result["sources"],
             conversation_id=conversation.id
         )

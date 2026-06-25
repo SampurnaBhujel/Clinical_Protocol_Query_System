@@ -1,202 +1,106 @@
-# # backend/preprocessing/pipeline.py
+# backend/preprocessing/pipeline.py
 
-# import warnings
-# import logging
-
-# warnings.filterwarnings("ignore")
-# logging.getLogger("transformers").setLevel(logging.ERROR)
-
-# from langchain_community.document_loaders import PyPDFLoader
-# from langchain_text_splitters import RecursiveCharacterTextSplitter
-# from langchain_huggingface import HuggingFaceEmbeddings
-# from langchain_chroma import Chroma
-
-# from config import settings
-
-
-# def get_embeddings() -> HuggingFaceEmbeddings:
-#     """Load the bilingual Nepali/English embedding model."""
-#     return HuggingFaceEmbeddings(
-#         model_name=settings.EMBEDDING_MODEL,
-#         model_kwargs={"device": "cpu"},
-#         encode_kwargs={
-#         "normalize_embeddings": True
-#         }
-#     )
-
-
-# def index_pdf(filepath: str, filename: str) -> None:
-#     """
-#     Load PDF, split into chunks, enrich metadata,
-#     generate embeddings, and store in ChromaDB.
-
-#     Args:
-#         filepath: Absolute or relative path to the saved PDF file.
-#         filename: Original filename used as the 'source' metadata field.
-#     """
-#     # Load all pages from the PDF
-#     loader = PyPDFLoader(filepath)
-#     docs = loader.load()
-
-#     # Split into chunks of 800 tokens with 150-token overlap
-#     # to preserve context across chunk boundaries
-#     splitter = RecursiveCharacterTextSplitter(
-#         chunk_size= 1000, #800,
-#         chunk_overlap=200, #150
-#         separators=[
-#             "\n\n",
-#             "\n",
-#             ". ",
-#             "? ",
-#             "! ",
-#             "; ",
-#             ", ",
-#             " ",
-#             ""
-#         ]
-#     )
-#     chunks = splitter.split_documents(docs)
-
-#     # Tag each chunk with the filename so it appears as the citation source
-#     for chunk in chunks:
-#         # E5 models were trained with passage prefixes.
-#         chunk.page_content = (f"passage: {chunk.page_content.strip()}")
-
-
-#         chunk.metadata["source"] = filename
-
-#         # added doc id in embedding to assist deletion
-#         chunk.metadata["doc_id"] = filename
-#         # chunk.metadata["source"] = filename
-#         # page number is already set by PyPDFLoader; default to "?" if missing
-#         #chunk.metadata["page"] = chunk.metadata.get("page", "?")
-#         chunk.metadata["page"] = str(chunk.metadata.get("page", "?"))
-
-#     embeddings = get_embeddings()
-
-#     # Add new chunks to the existing ChromaDB collection
-#     # (does not wipe existing documents already indexed)
-#     Chroma.from_documents(
-#         documents=chunks,
-#         embedding=embeddings,
-#         persist_directory=settings.CHROMA_STORE_PATH,
-#         collection_name="clinical_docs"
-#     )
-
+import hashlib
 import json
 import os
 import warnings
 import logging
 
+from langchain_chroma import Chroma
+from langchain_core.documents import Document
+
+from config import settings
+from preprocessing.chunker import build_sections, infer_document_name, split_section
+from preprocessing.embeddings import get_embeddings
+from preprocessing.parser import extract_pages
+from preprocessing.schemas import ChunkMetadata
+
 warnings.filterwarnings("ignore")
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
-from langchain_core.documents import Document
-from langchain_chroma import Chroma
 
-from config import settings
-
-from preprocessing.embeddings import get_embeddings
-from preprocessing.parser import extract_pages
-from preprocessing.chunker import (
-    build_sections,
-    split_section
-)
-from preprocessing.schemas import ChunkMetadata
+def _safe_filename(name: str) -> str:
+    return "".join(char if char.isalnum() or char in ("-", "_", ".") else "_" for char in name)
 
 
-def save_chunk_json(
-    filename: str,
-    chunk_json: dict
-):
+def _chunk_id(filename: str, index: int, text: str) -> str:
+    digest = hashlib.sha1(f"{filename}:{index}:{text[:250]}".encode("utf-8")).hexdigest()[:12]
+    return f"{_safe_filename(filename)}::{index:05d}::{digest}"
 
-    metadata_dir = os.path.join(
-        settings.DOCUMENTS_PATH,
-        "metadata_store"
-    )
 
+def _heading_path(chapter: str, section: str, subsection: str) -> str:
+    return " > ".join(part for part in (chapter, section, subsection) if part)
+
+
+def save_chunk_json(filename: str, chunk_json: dict) -> None:
+    metadata_dir = os.path.join(settings.DOCUMENTS_PATH, "metadata_store")
     os.makedirs(metadata_dir, exist_ok=True)
+    output_file = os.path.join(metadata_dir, f"{_safe_filename(filename)}.jsonl")
 
-    output_file = os.path.join(
-        metadata_dir,
-        f"{filename}.jsonl"
-    )
-
-    with open(
-        output_file,
-        "a",
-        encoding="utf-8"
-    ) as f:
-
-        f.write(
-            json.dumps(
-                chunk_json,
-                ensure_ascii=False
-            )
-            + "\n"
-        )
+    with open(output_file, "a", encoding="utf-8") as f:
+        f.write(json.dumps(chunk_json, ensure_ascii=False) + "\n")
 
 
-def index_pdf(
-    filepath: str,
-    filename: str
-):
+def index_pdf(filepath: str, filename: str) -> None:
+    """
+    Structure-aware ingestion for clinical PDFs.
 
+    Pipeline:
+    1. Extract PyMuPDF lines with font metadata.
+    2. Infer title/chapter/section/subsection hierarchy.
+    3. Split each section into coherent clinical concept chunks.
+    4. Store dense embeddings with full traceability metadata.
+    """
     pages = extract_pages(filepath)
-
-    sections = build_sections(pages)
+    sections = build_sections(pages, filename=filename)
+    document_name = infer_document_name(filename)
 
     documents = []
-
     chunk_counter = 0
 
     for section in sections:
-
-        chunks = split_section(
-            section["text"]
-        )
+        chunks = split_section(section["text"])
 
         for chunk in chunks:
-
             chunk = chunk.strip()
-
-            if len(chunk) < 100:
+            if len(chunk) < 120:
                 continue
 
+            chunk_id = _chunk_id(filename, chunk_counter, chunk)
             metadata = ChunkMetadata(
                 source=filename,
                 doc_id=filename,
-                page=section["page"],
-                section=section["heading"],
-                chunk_id=chunk_counter,
-                chunk_length=len(chunk)
+                document=document_name,
+                title=section["title"],
+                chapter=section["chapter"],
+                section=section["section"],
+                subsection=section["subsection"],
+                page=int(section["page"]),
+                chunk_id=chunk_id,
+                chunk_length=len(chunk),
+                heading_path=_heading_path(section["chapter"], section["section"], section["subsection"]),
+                content_type=section["content_type"],
             )
+            metadata_dict = metadata.to_dict()
 
-            chunk_json = {
-                "content": chunk,
-                "metadata": metadata.to_dict()
-            }
+            save_chunk_json(filename, {
+                "text": chunk,
+                "metadata": metadata_dict,
+            })
 
-            save_chunk_json(
-                filename,
-                chunk_json
-            )
-
-            documents.append(
-                Document(
-                    page_content=f"passage: {chunk}",
-                    metadata=metadata.to_dict()
-                )
-            )
-
+            # E5 embeddings expect a passage prefix, but retrieval strips it before prompting.
+            documents.append(Document(
+                page_content=f"passage: {chunk}",
+                metadata=metadata_dict,
+            ))
             chunk_counter += 1
+
+    if not documents:
+        raise ValueError(f"No structure-aware chunks were produced for {filename}")
 
     vectorstore = Chroma(
         persist_directory=settings.CHROMA_STORE_PATH,
         embedding_function=get_embeddings(),
         collection_name="clinical_docs"
     )
-
-    vectorstore.add_documents(
-        documents
-    )
+    vectorstore.add_documents(documents)

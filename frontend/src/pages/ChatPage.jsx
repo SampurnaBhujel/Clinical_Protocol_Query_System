@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import axiosClient from '../api/axiosClient'
 import ResponseCard from '../components/ResponseCard'
 import Icon from '../components/Icon'
+import { useAuth } from '../context/AuthContext'
 
 const DISCLAIMER = 'This assistant is for protocol guidance only. It is not a diagnosis. Please consult a qualified medical professional for personal medical care.'
 
@@ -13,13 +14,13 @@ const SUGGESTIONS = [
 ]
 
 export default function ChatPage() {
+    const { username } = useAuth()
     const [messages, setMessages] = useState([])
     const [question, setQuestion] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [conversations, setConversations] = useState([])
     const [selectedConversationId, setSelectedConversationId] = useState(null)
-    const [readOnlyMode, setReadOnlyMode] = useState(false)
     const bottomRef = useRef(null)
 
     const fetchConversations = useCallback(async () => {
@@ -44,7 +45,6 @@ export default function ChatPage() {
         setQuestion('')
         setError('')
         setSelectedConversationId(null)
-        setReadOnlyMode(false)
     }
 
     async function openConversation(conversationId) {
@@ -52,16 +52,14 @@ export default function ChatPage() {
         setError('')
         try {
             const res = await axiosClient.get(`/chat/history/${conversationId}`)
-            setMessages(
-                (res.data.messages || []).map(message => ({
-                    role: message.role,
-                    content: message.content,
-                    sources: []
-                }))
-            )
+            setMessages((res.data.messages || []).map(message => ({
+                role: message.role,
+                content: message.content,
+                sources: message.sources || [],
+                confidence: message.confidence || ''
+            })))
             setQuestion('')
             setSelectedConversationId(res.data.id)
-            setReadOnlyMode(true)
         } catch (err) {
             setError(err.response?.data?.detail || 'Unable to open this conversation.')
         } finally {
@@ -69,13 +67,24 @@ export default function ChatPage() {
         }
     }
 
+    async function deleteConversation(e, conversationId) {
+        e.stopPropagation()
+        if (!window.confirm('Delete this conversation?')) return
+        try {
+            await axiosClient.delete(`/chat/history/${conversationId}`)
+            if (selectedConversationId === conversationId) startNewConversation()
+            fetchConversations()
+        } catch (err) {
+            setError(err.response?.data?.detail || 'Unable to delete this conversation.')
+        }
+    }
+
     async function handleQuery(questionText) {
         const q = (questionText || question).trim()
-        if (!q || loading || readOnlyMode) return
+        if (!q || loading) return
 
         const userMessage = { role: 'user', content: q }
-        const updatedHistory = [...messages, userMessage]
-        setMessages(updatedHistory)
+        setMessages(prev => [...prev, userMessage])
         setQuestion('')
         setLoading(true)
         setError('')
@@ -83,8 +92,7 @@ export default function ChatPage() {
         try {
             const res = await axiosClient.post('/rag/query', {
                 question: q,
-                conversation_id: selectedConversationId,
-                history: updatedHistory.map(m => ({ role: m.role, content: m.content }))
+                conversation_id: selectedConversationId
             })
             setSelectedConversationId(res.data.conversation_id)
             setMessages(prev => [
@@ -92,7 +100,8 @@ export default function ChatPage() {
                 {
                     role: 'assistant',
                     content: res.data.answer || 'No answer returned.',
-                    sources: res.data.sources || []
+                    sources: res.data.sources || [],
+                    confidence: res.data.confidence || ''
                 }
             ])
             fetchConversations()
@@ -118,7 +127,7 @@ export default function ChatPage() {
                     <div className="sidebar-header">
                         <span className="sidebar-icon"><Icon name="activity" size={22} /></span>
                         <div>
-                            <h1>User Page</h1>
+                            <h1>Hello, {username || 'User'}</h1>
                             <p>Ask clinical protocol questions.</p>
                         </div>
                     </div>
@@ -142,9 +151,20 @@ export default function ChatPage() {
                                         type="button"
                                         className="history-item"
                                         onClick={() => openConversation(conversation.id)}
-                                        aria-current={selectedConversationId === conversation.id && readOnlyMode ? 'true' : undefined}
+                                        aria-current={selectedConversationId === conversation.id ? 'true' : undefined}
                                     >
-                                        {conversation.title}
+                                        <span>{conversation.title}</span>
+                                        <span
+                                            className="history-delete"
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={e => deleteConversation(e, conversation.id)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter' || e.key === ' ') deleteConversation(e, conversation.id)
+                                            }}
+                                        >
+                                            Delete
+                                        </span>
                                     </button>
                                 ))}
                             </div>
@@ -159,7 +179,7 @@ export default function ChatPage() {
                                 type="button"
                                 className="prompt-button"
                                 onClick={() => handleQuery(prompt)}
-                                disabled={loading || readOnlyMode}
+                                disabled={loading}
                             >
                                 <Icon name="chevronRight" size={16} />
                                 {prompt}
@@ -179,22 +199,16 @@ export default function ChatPage() {
                         </div>
                         <span className="status-badge">
                             <span className="status-dot" />
-                            {readOnlyMode ? 'Read only' : 'Ready'}
+                            Ready
                         </span>
                     </div>
-
-                    {readOnlyMode && (
-                        <div className="readonly-banner">
-                            Viewing previous conversation (read only)
-                        </div>
-                    )}
 
                     <div className="chat-messages">
                         {messages.length === 0 && (
                             <div className="empty-state">
                                 <Icon name="messageCircle" size={34} />
                                 <h3>Start with a health question</h3>
-                                <p>Use Nepali, English, or both. Answers include available source document names.</p>
+                                <p>Use Nepali, English, or both. Answers include source documents.</p>
                             </div>
                         )}
 
@@ -203,12 +217,16 @@ export default function ChatPage() {
                                 {msg.role === 'user' ? (
                                     <div className="message-bubble user-message">{msg.content}</div>
                                 ) : (
-                                    <ResponseCard answer={msg.content} sources={msg.sources || []} />
+                                    <ResponseCard
+                                        answer={msg.content}
+                                        sources={msg.sources || []}
+                                        confidence={msg.confidence || ''}
+                                    />
                                 )}
                             </div>
                         ))}
 
-                        {loading && !readOnlyMode && (
+                        {loading && (
                             <div className="message-row assistant">
                                 <div className="message-bubble assistant-message typing">
                                     <span />
@@ -223,22 +241,20 @@ export default function ChatPage() {
 
                     {error && <p className="alert error chat-alert">{error}</p>}
 
-                    {!readOnlyMode && (
-                        <form className="chat-input-area" onSubmit={e => { e.preventDefault(); handleQuery() }}>
-                            <textarea
-                                rows={2}
-                                placeholder="Type your health question... / यहाँ आफ्नो प्रश्न लेख्नुहोस्..."
-                                value={question}
-                                onChange={e => setQuestion(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                disabled={loading}
-                            />
-                            <button className="button primary send-button" type="submit" disabled={loading || !question.trim()}>
-                                <Icon name="send" size={18} />
-                                Send
-                            </button>
-                        </form>
-                    )}
+                    <form className="chat-input-area" onSubmit={e => { e.preventDefault(); handleQuery() }}>
+                        <textarea
+                            rows={2}
+                            placeholder="Type your health question... / यहाँ आफ्नो प्रश्न लेख्नुहोस्..."
+                            value={question}
+                            onChange={e => setQuestion(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            disabled={loading}
+                        />
+                        <button className="button primary send-button" type="submit" disabled={loading || !question.trim()}>
+                            <Icon name="send" size={18} />
+                            Send
+                        </button>
+                    </form>
                 </section>
             </section>
         </main>

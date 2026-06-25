@@ -1,6 +1,7 @@
 # backend/admin/router.py
 
 import os
+import json
 import shutil
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
@@ -127,3 +128,24 @@ async def list_users(
     admin: User = Depends(require_admin)
 ):
     return db.query(User).all()
+
+
+@router.get("/evaluation")
+async def list_evaluation_logs(
+    admin: User = Depends(require_admin)
+):
+    log_path = os.path.join("logs", "rag_evaluation.jsonl")
+    if not os.path.exists(log_path):
+        return []
+
+    records = []
+    with open(log_path, "r", encoding="utf-8") as log_file:
+        for line in log_file:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                records.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return list(reversed(records[-500:]))
