@@ -15,6 +15,8 @@ from preprocessing.embeddings import get_embeddings
 from preprocessing.parser import extract_pages
 from preprocessing.schemas import ChunkMetadata
 
+from resources import get_vectorstore
+
 warnings.filterwarnings("ignore")
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
@@ -98,9 +100,10 @@ def index_pdf(filepath: str, filename: str) -> None:
     if not documents:
         raise ValueError(f"No structure-aware chunks were produced for {filename}")
 
-    vectorstore = Chroma(
-        persist_directory=settings.CHROMA_STORE_PATH,
-        embedding_function=get_embeddings(),
-        collection_name="clinical_docs"
-    )
+    # vectorstore = Chroma(
+    #     persist_directory=settings.CHROMA_STORE_PATH,
+    #     embedding_function=get_embeddings(),
+    #     collection_name="clinical_docs"
+    # )
+    vectorstore = get_vectorstore()
     vectorstore.add_documents(documents)

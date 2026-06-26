@@ -21,6 +21,8 @@ from rag.medical_synonyms import expand_query
 from rag.query_rewriter import rewrite_query
 from rag.reranker import rerank_chunks
 
+from resources import get_vectorstore
+
 os.environ["SSL_CERT_FILE"] = certifi.where()
 os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
@@ -179,11 +181,12 @@ def _context_from_evidence(evidence: list[dict]) -> str:
 
 
 def retrieve_evidence(search_query: str) -> tuple[str, list[dict], str]:
-    vectorstore = Chroma(
-        persist_directory=settings.CHROMA_STORE_PATH,
-        embedding_function=get_embeddings(),
-        collection_name="clinical_docs"
-    )
+    # vectorstore = Chroma(
+    #     persist_directory=settings.CHROMA_STORE_PATH,
+    #     embedding_function=get_embeddings(),
+    #     collection_name="clinical_docs"
+    # )
+    vectorstore = get_vectorstore()
     selected_route = "ALL"
     raw_results = _search_vectorstore(vectorstore, search_query)
 
