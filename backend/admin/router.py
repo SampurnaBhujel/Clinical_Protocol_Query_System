@@ -14,15 +14,18 @@ from admin.schemas import DocumentOut, UserOut
 from preprocessing.pipeline import get_embeddings, index_pdf
 from config import settings
 
+from resources import get_vectorstore
+
 router = APIRouter()
 
 
 def delete_document_vectors(filename: str) -> None:
-    vectorstore = Chroma(
-        persist_directory=settings.CHROMA_STORE_PATH,
-        embedding_function=get_embeddings(),
-        collection_name="clinical_docs"
-    )
+    # vectorstore = Chroma(
+    #     persist_directory=settings.CHROMA_STORE_PATH,
+    #     embedding_function=get_embeddings(),
+    #     collection_name="clinical_docs"
+    # )
+    vectorstore = get_vectorstore()
     vectorstore._collection.delete(where={"doc_id": filename})
 
 @router.post("/documents/upload", response_model=DocumentOut)
