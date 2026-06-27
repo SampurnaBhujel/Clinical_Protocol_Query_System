@@ -6,7 +6,8 @@ import re
 import certifi
 import warnings
 import logging
-from datetime import datetime, timezone
+#from datetime import datetime, timezone
+from utils.time import now_nepal
 
 from langchain_chroma import Chroma
 from langchain_core.output_parsers import StrOutputParser
@@ -32,6 +33,7 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 VECTOR_FETCH_K = 20
 MAX_EVIDENCE = 5
 MAX_CHROMA_DISTANCE = 1.45
+MAX_EXCERPT = 90
 RAG_LOG_PATH = os.path.join("logs", "rag_evaluation.jsonl")
 
 NO_ANSWER_EN = "I could not find this information in the available clinical documents."
@@ -220,7 +222,13 @@ def _source_payload(evidence: list[dict]) -> list[dict]:
         "heading_path": item["heading_path"],
         "page": item["page"],
         "chunk_id": item["chunk_id"],
-        "excerpt": item["text"][:260],
+        #"excerpt": item["text"][:260],
+        "excerpt": (
+            item["text"][:MAX_EXCERPT] + "..."
+            if len(item["text"]) > MAX_EXCERPT
+            else item["text"]
+    ),
+
     } for item in evidence]
 
 
@@ -235,7 +243,8 @@ def _log_rag_event(
 ) -> None:
     os.makedirs(os.path.dirname(RAG_LOG_PATH), exist_ok=True)
     event = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        #"timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": now_nepal().isoformat(),
         "conversation_id": conversation_id,
         "original_question": original_question,
         "rewritten_question": rewritten_question,

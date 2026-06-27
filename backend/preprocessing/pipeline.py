@@ -17,6 +17,8 @@ from preprocessing.schemas import ChunkMetadata
 
 from resources import get_vectorstore
 
+from utils.time import now_nepal
+
 warnings.filterwarnings("ignore")
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
@@ -82,6 +84,7 @@ def index_pdf(filepath: str, filename: str) -> None:
                 chunk_length=len(chunk),
                 heading_path=_heading_path(section["chapter"], section["section"], section["subsection"]),
                 content_type=section["content_type"],
+                indexed_at=now_nepal().isoformat(),
             )
             metadata_dict = metadata.to_dict()
 

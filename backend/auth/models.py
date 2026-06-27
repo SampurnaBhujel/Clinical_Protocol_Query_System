@@ -3,6 +3,7 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
 from database import Base
+from utils.time import now_nepal
 
 class User(Base):
     __tablename__ = "users"
@@ -13,4 +14,8 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     # role is either "user" or "admin"; defaults to "user" on registration
     role = Column(String, default="user", nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    #created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True),
+        default=now_nepal
+    )

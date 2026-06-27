@@ -26,8 +26,8 @@ from admin.router import router as admin_router
 from chat.router import router as chat_router
 from chat.migrations import ensure_chat_message_columns
 
-# from resources import get_embeddings
-# from resources import get_vectorstore
+from resources import get_embeddings
+from resources import get_vectorstore
 
 # Create all SQLite tables on startup
 Base.metadata.create_all(bind=engine)
@@ -53,7 +53,7 @@ app.include_router(chat_router, prefix="/chat", tags=["Chat"])
 async def root():
     return {"message": "Clinical Protocol Query System Running"}
 
-# @app.on_event("startup")
-# async def startup():
-#     get_embeddings()
-#     get_vectorstore()
+@app.on_event("startup")
+async def startup():
+    get_embeddings()
+    get_vectorstore()

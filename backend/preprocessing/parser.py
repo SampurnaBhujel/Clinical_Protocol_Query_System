@@ -59,6 +59,7 @@ def extract_pages(pdf_path: str) -> list[dict]:
         body_size = median(body_sizes) if body_sizes else 0
 
         pages.append({
+            #"page": page_index + 1,
             "page": page_index + 1,
             "body_font_size": body_size,
             "lines": raw_lines,

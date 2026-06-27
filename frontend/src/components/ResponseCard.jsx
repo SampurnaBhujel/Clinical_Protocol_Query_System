@@ -19,7 +19,8 @@ function normalizeSources(sources) {
 
         return {
             id: source.id ?? index + 1,
-            label: `[${source.id ?? index + 1}] ${document} - p.${page}${section ? ` - ${section}` : ''}`,
+            // label: `[${source.id ?? index + 1}] ${document} - p.${page}${section ? ` - ${section}` : ''}`,
+            label: `[${source.id ?? index + 1}] ${document} - p.${page}`,
             excerpt: source.excerpt || ''
         }
     })
@@ -44,8 +45,8 @@ export default function ResponseCard({ answer = '', sources = [], confidence = '
             <div className="answer-text">
                 <ReactMarkdown>
                     {answer}
-        </ReactMarkdown>
-    </div>
+                </ReactMarkdown>
+            </div>
 
             {normalizedSources.length > 0 && (
                 <div className="source-list">
