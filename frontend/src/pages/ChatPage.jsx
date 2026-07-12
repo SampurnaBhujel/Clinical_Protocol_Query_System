@@ -4,13 +4,13 @@ import ResponseCard from '../components/ResponseCard'
 import Icon from '../components/Icon'
 import { useAuth } from '../context/AuthContext'
 
-const DISCLAIMER = 'This assistant is for protocol guidance only. It is not a diagnosis. Please consult a qualified medical professional for personal medical care.'
+const DISCLAIMER = 'This assistant is for guidance only. It is not a diagnosis. Please consult a qualified medical professional for personal medical care.'
 
 const SUGGESTIONS = [
-    'टाइफाइडका सामान्य लक्षणहरू के हुन्?',
-    'How can dengue fever be prevented?',
-    'बच्चामा निमोनियाको चेतावनी संकेत के हुन्?',
-    'What should I do for dehydration symptoms?'
+    { text: 'टाइफाइडका सामान्य लक्षणहरू के हुन्?', sub: 'Typhoid information' },
+    { text: 'How can dengue fever be prevented?', sub: 'Prevention tips' },
+    { text: 'बच्चामा निमोनियाको चेतावनी संकेत के हुन्?', sub: 'Child health signs' },
+    { text: 'What should I do for dehydration symptoms?', sub: 'Dehydration advice' }
 ]
 
 export default function ChatPage() {
@@ -28,7 +28,7 @@ export default function ChatPage() {
             const res = await axiosClient.get('/chat/history')
             setConversations(res.data || [])
         } catch {
-            setError('Unable to load chat history.')
+            setError('Unable to load history.')
         }
     }, [])
 
@@ -48,6 +48,7 @@ export default function ChatPage() {
     }
 
     async function openConversation(conversationId) {
+        if (loading) return
         setLoading(true)
         setError('')
         try {
@@ -61,7 +62,7 @@ export default function ChatPage() {
             setQuestion('')
             setSelectedConversationId(res.data.id)
         } catch (err) {
-            setError(err.response?.data?.detail || 'Unable to open this conversation.')
+            setError(err.response?.data?.detail || 'Unable to open this chat.')
         } finally {
             setLoading(false)
         }
@@ -69,17 +70,17 @@ export default function ChatPage() {
 
     async function deleteConversation(e, conversationId) {
         e.stopPropagation()
-        if (!window.confirm('Delete this conversation?')) return
+        if (!window.confirm('Delete this chat? This cannot be undone.')) return
         try {
             await axiosClient.delete(`/chat/history/${conversationId}`)
             if (selectedConversationId === conversationId) startNewConversation()
             fetchConversations()
         } catch (err) {
-            setError(err.response?.data?.detail || 'Unable to delete this conversation.')
+            setError(err.response?.data?.detail || 'Unable to delete.')
         }
     }
 
-    async function handleQuery(questionText) {
+    const handleQuery = useCallback(async (questionText) => {
         const q = (questionText || question).trim()
         if (!q || loading) return
 
@@ -106,12 +107,12 @@ export default function ChatPage() {
             ])
             fetchConversations()
         } catch (err) {
-            setError(err.response?.data?.detail || 'Unable to get a response. Please try again.')
+            setError(err.response?.data?.detail || 'Unable to get response. Please try again.')
             setMessages(prev => prev.slice(0, -1))
         } finally {
             setLoading(false)
         }
-    }
+    }, [question, loading, selectedConversationId, fetchConversations])
 
     function handleKeyDown(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -121,146 +122,225 @@ export default function ChatPage() {
     }
 
     return (
-        <main className="workspace-page">
-            <section className="workspace-shell">
-                <aside className="patient-sidebar">
-                    <div className="sidebar-header">
-                        <span className="sidebar-icon"><Icon name="activity" size={22} /></span>
-                        <div>
-
-                            <h1>Hello, {username || 'User'}</h1>
-01dc14d0b3b5e41d0f2b3070bb785e98f3bb92e9
-                            <p>Ask clinical protocol questions.</p>
-                        </div>
-                    </div>
-                    <div className="safety-note">
-                        <Icon name="shield" size={19} />
-                        <p>{DISCLAIMER}</p>
+        <main className="workspace-root-wrapper">
+            <div className="workspace-layout">
+                
+                <aside className="clinical-sidebar" aria-label="Chat Controls and History">
+                    <div className="sidebar-action-zone">
+                        <button className="btn-sidebar-primary" type="button" onClick={startNewConversation} disabled={loading}>
+                            <Icon name="plus" size={16} aria-hidden="true" />
+                            <span>New Chat</span>
+                        </button>
                     </div>
 
-                    <button className="button primary full" type="button" onClick={startNewConversation}>
-                        <Icon name="plus" size={18} />
-                        New Conversation
-                    </button>
+                    <div className="sidebar-scrollable-content">
+                        {conversations.length > 0 && (
+                            <nav className="history-navigation" aria-label="Session History">
+                                <div className="history-section-label">PREVIOUS CHATS</div>
+                                <div className="history-stack">
+                                    {conversations.map(conversation => {
+                                        const isActive = selectedConversationId === conversation.id;
+                                        return (
+                                            <div 
+                                                key={conversation.id} 
+                                                className={`history-item-container ${isActive ? 'active-node' : ''}`}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    className="history-item-btn"
+                                                    onClick={() => openConversation(conversation.id)}
+                                                    disabled={loading}
+                                                    aria-current={isActive ? 'true' : undefined}
+                                                >
+                                                    <Icon name="messageCircle" size={14} className="node-icon" aria-hidden="true" />
+                                                    <span className="truncate-text">{conversation.title || 'Untitled Chat'}</span>
+                                                </button>
+                                                <button
+                                                    className="history-item-delete"
+                                                    type="button"
+                                                    aria-label={`Delete entry: ${conversation.title}`}
+                                                    onClick={e => deleteConversation(e, conversation.id)}
+                                                >
+                                                    <Icon name="trash" size={13} aria-hidden="true" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </nav>
+                        )}
+                    </div>
 
-                    {conversations.length > 0 && (
-                        <div className="quick-prompts">
-                            <h2>History</h2>
-                            <div className="history-list">
-                                {conversations.map(conversation => (
-                                    <button
-                                        key={conversation.id}
-                                        type="button"
-                                        className="history-item"
-                                        onClick={() => openConversation(conversation.id)}
-                                        aria-current={selectedConversationId === conversation.id ? 'true' : undefined}
-                                    >
-                                        <span>{conversation.title}</span>
-                                        <span
-                                            className="history-delete"
-                                            role="button"
-                                            tabIndex={0}
-                                            onClick={e => deleteConversation(e, conversation.id)}
-                                            onKeyDown={e => {
-                                                if (e.key === 'Enter' || e.key === ' ') deleteConversation(e, conversation.id)
-                                            }}
-                                        >
-                                            Delete
-                                        </span>
-                                    </button>
-                                ))}
+                    <div className="sidebar-footer-compliance">
+                        <div className="safety-card">
+                            <div className="safety-header">
+                                <Icon name="shield" size={14} className="warning-indicator" aria-hidden="true" />
+                                <span>SAFETY NOTICE</span>
                             </div>
+                            <p>{DISCLAIMER}</p>
                         </div>
-                    )}
-
-                    <div className="quick-prompts">
-                        <h2>Suggested questions</h2>
-                        {SUGGESTIONS.map(prompt => (
-                            <button
-                                key={prompt}
-                                type="button"
-                                className="prompt-button"
-                                onClick={() => handleQuery(prompt)}
-                                disabled={loading}
-                            >
-                                <Icon name="chevronRight" size={16} />
-                                {prompt}
-                            </button>
-                        ))}
                     </div>
                 </aside>
 
-                <section className="chat-panel" aria-label="Medical chatbot conversation">
-                    <div className="chat-header">
-                        <div>
-                            <span className="eyebrow">
-                                <Icon name="bookOpen" size={16} />
-                                Protocol search
+                <section className="chat-viewport-panel" aria-label="Medical chatbot conversation">
+                    <header className="viewport-header">
+                        <div className="header-meta-cluster">
+                            <span className="engine-badge">
+                                <Icon name="activity" size={12} aria-hidden="true" />
+                                MEDICAL ASSISTANT v2.4
                             </span>
-                            <h2>Clinical Assistant</h2>
                         </div>
-                        {/* <span className="status-badge">
-                            <span className="status-dot" />
+                        <div className="active-session-title">
+                            {selectedConversationId ? 'Current Analysis' : 'New Session'}
+                        </div>
+                    </header>
 
-                            {readOnlyMode ? 'Read only' : 'Ready'}
-                        </span> */}
+                    <div className="message-scroller-view">
+                        <div className="view-inner-bounded">
+                            {messages.length === 0 && (
+                                <article className="dashboard-empty-canvas">
+                                    <header className="welcome-banner">
+                                        <h1>Hello, <span className="user-glow-name">{username || 'Clinician'}</span></h1>
+                                        <p>Ask your medical questions here. I will provide guidance based on health protocols.</p>
+                                    </header>
 
-                    </div>
+                                    <section className="suggestions-grid-matrix" aria-label="Suggested diagnostic entry points">
+                                        {SUGGESTIONS.map(prompt => (
+                                            <button
+                                                key={prompt.text}
+                                                type="button"
+                                                className="suggestion-plate-card"
+                                                onClick={() => handleQuery(prompt.text)}
+                                                disabled={loading}
+                                            >
+                                                <div className="suggestion-content">
+                                                    <span className="suggestion-body">{prompt.text}</span>
+                                                    <span className="suggestion-meta">{prompt.sub}</span>
+                                                </div>
+                                                <div className="action-arrow-icon" aria-hidden="true">
+                                                    <Icon name="arrowUpRight" size={14} />
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </section>
+                                </article>
+                            )}
 
-                    <div className="chat-messages">
-                        {messages.length === 0 && (
-                            <div className="empty-state">
-                                <Icon name="messageCircle" size={34} />
-                                <h3>Start with a health question</h3>
-                                <p>Use Nepali, English, or both. Answers include source documents.</p>
-                            </div>
-                        )}
+                            <div className="message-thread-stream" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                {messages.map((msg, index) => {
+                                    const isUser = msg.role === 'user';
+                                    return (
+                                        <div 
+                                            key={`${msg.role}-${index}`} 
+                                            className={`message-block-row ${isUser ? 'user-aligned' : 'assistant-aligned'}`}
+                                            style={{
+                                                display: 'flex',
+                                                justifyContent: isUser ? 'flex-end' : 'flex-start',
+                                                flexDirection: isUser ? 'row-reverse' : 'row',
+                                                alignItems: 'flex-start',
+                                                gap: '12px',
+                                                width: '100%'
+                                            }}
+                                        >
+                                            <div className="message-avatar-hub" aria-hidden="true" style={{ flexShrink: 0 }}>
+                                                <div className={`avatar-pill ${isUser ? 'user-avatar' : 'assistant-avatar'}`}>
+                                                    <Icon name={isUser ? 'user' : 'activity'} size={14} />
+                                                </div>
+                                            </div>
 
-                        {messages.map((msg, index) => (
-                            <div key={`${msg.role}-${index}`} className={`message-row ${msg.role}`}>
-                                {msg.role === 'user' ? (
-                                    <div className="message-bubble user-message">{msg.content}</div>
-                                ) : (
-                                    <ResponseCard
-                                        answer={msg.content}
-                                        sources={msg.sources || []}
-                                        confidence={msg.confidence || ''}
-                                    />
+                                            <div 
+                                                className="message-payload-body" 
+                                                style={{ 
+                                                    maxWidth: '75%',
+                                                    width: '100%',
+                                                    textAlign: isUser ? 'right' : 'left' 
+                                                }}
+                                            >
+                                                {isUser ? (
+                                                    <div className="user-bubble-content" style={{ display: 'inline-block', textAlign: 'left' }}>
+                                                        {msg.content}
+                                                    </div>
+                                                ) : (
+                                                    <div className="assistant-card-container">
+                                                        <ResponseCard
+                                                            answer={msg.content}
+                                                            sources={msg.sources || []}
+                                                            confidence={msg.confidence || ''}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+
+                                {loading && (
+                                    <div 
+                                        className="message-block-row assistant-aligned loading-state-active"
+                                        style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start', gap: '12px' }}
+                                    >
+                                        <div className="message-avatar-hub" aria-hidden="true" style={{ flexShrink: 0 }}>
+                                            <div className="avatar-pill assistant-avatar processing-spin">
+                                                <Icon name="activity" size={14} />
+                                            </div>
+                                        </div>
+                                        <div className="message-payload-body" style={{ maxWidth: '75%', width: '100%', textAlign: 'left' }}>
+                                            <div className="clinical-typing-skeleton" aria-label="Processing request">
+                                                <div className="pulse-bar skeletal-long" />
+                                                <div className="pulse-bar skeletal-medium" />
+                                            </div>
+                                        </div>
+                                    </div>
                                 )}
+                                <div ref={bottomRef} />
                             </div>
-                        ))}
-
-                        {loading && (
-                            <div className="message-row assistant">
-                                <div className="message-bubble assistant-message typing">
-                                    <span />
-                                    <span />
-                                    <span />
-                                </div>
-                            </div>
-                        )}
-
-                        <div ref={bottomRef} />
+                        </div>
                     </div>
 
-                    {error && <p className="alert error chat-alert">{error}</p>}
+                    <footer className="workspace-input-dock-anchor">
+                        <div className="dock-inner-bounded">
+                            {error && (
+                                <div className="telemetry-error-alert animate-shake" role="alert">
+                                    <Icon name="alertTriangle" size={14} aria-hidden="true" />
+                                    <span>{error}</span>
+                                </div>
+                            )}
 
-                    <form className="chat-input-area" onSubmit={e => { e.preventDefault(); handleQuery() }}>
-                        <textarea
-                            rows={2}
-                            placeholder="Type your health question... / यहाँ आफ्नो प्रश्न लेख्नुहोस्..."
-                            value={question}
-                            onChange={e => setQuestion(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            disabled={loading}
-                        />
-                        <button className="button primary send-button" type="submit" disabled={loading || !question.trim()}>
-                            <Icon name="send" size={18} />
-                            Send
-                        </button>
-                    </form>
+                            <form 
+                                className="dock-input-bar-container"
+                                onSubmit={e => { 
+                                    e.preventDefault(); 
+                                    if (question.trim() && !loading) handleQuery(); 
+                                }}
+                            >
+                                <textarea
+                                    className="dock-textarea"
+                                    rows={1}
+                                    placeholder="Type your health question..."
+                                    value={question}
+                                    onChange={e => setQuestion(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    disabled={loading}
+                                    aria-label="Medical query prompt interface"
+                                />
+                                <div className="dock-action-bar">
+                                    <button 
+                                        className="btn-dock-submit" 
+                                        type="submit" 
+                                        disabled={loading || !question.trim()}
+                                        aria-label="Submit query"
+                                    >
+                                        <Icon name="arrowUp" size={16} aria-hidden="true" />
+                                    </button>
+                                </div>
+                            </form>
+                            <div className="dock-subtext-compliance">
+                                Secure clinical guidance system.
+                            </div>
+                        </div>
+                    </footer>
                 </section>
-            </section>
+            </div>
         </main>
     )
 }

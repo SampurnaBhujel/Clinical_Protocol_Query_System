@@ -2,7 +2,10 @@
 
 const ICONS = {
     activity: 'M22 12h-4l-3 8L9 4l-3 8H2',
+    alertTriangle: 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01',
     arrowRight: 'M5 12h14M13 5l7 7-7 7',
+    arrowUp: 'M12 19V5M5 12l7-7 7 7',
+    arrowUpRight: 'M7 17L17 7M7 7h10v10',
     bookOpen: 'M2 4.5A2.5 2.5 0 0 1 4.5 2H10v18H4.5A2.5 2.5 0 0 1 2 17.5v-13ZM14 2h5.5A2.5 2.5 0 0 1 22 4.5v13a2.5 2.5 0 0 1-2.5 2.5H14V2Z',
     check: 'M20 6 9 17l-5-5',
     chevronRight: 'M9 18l6-6-6-6',
@@ -29,6 +32,9 @@ const ICONS = {
 }
 
 export default function Icon({ name, size = 20, strokeWidth = 2, className = '', title }) {
+    // Graceful fallback to avoid rendering exceptions if an unknown string name passes through
+    const pathData = ICONS[name] || '';
+
     return (
         <svg
             className={`icon ${className}`}
@@ -44,7 +50,7 @@ export default function Icon({ name, size = 20, strokeWidth = 2, className = '',
             role={title ? 'img' : undefined}
         >
             {title && <title>{title}</title>}
-            <path d={ICONS[name]} />
+            {pathData ? <path d={pathData} /> : null}
         </svg>
     )
 }

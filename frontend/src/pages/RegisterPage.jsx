@@ -15,7 +15,7 @@ export default function RegisterPage() {
     async function handleRegister(e) {
         e?.preventDefault()
         if (!username.trim() || !email.trim() || !password.trim()) {
-            setError('Please complete all fields.')
+            setError('Please fill in all fields to continue.')
             return
         }
 
@@ -28,10 +28,10 @@ export default function RegisterPage() {
                 email: email.trim(),
                 password
             })
-            setSuccess('Account created. Redirecting to login...')
+            setSuccess('Account created! Taking you to the login page…')
             setTimeout(() => navigate('/login'), 900)
         } catch (err) {
-            setError(err.response?.data?.detail || 'Registration failed. Please try again.')
+            setError(err.response?.data?.detail || 'We could not create your account. Please try again.')
         } finally {
             setLoading(false)
         }
@@ -42,8 +42,8 @@ export default function RegisterPage() {
             <section className="auth-card">
                 <div className="auth-heading">
                     <span className="auth-icon"><Icon name="user" size={22} /></span>
-                    <h1>Create Account</h1>
-                    <p>Register to ask medical protocol questions safely.</p>
+                    <h1>Create your account</h1>
+                    <p>Sign up to start asking clinical protocol questions safely.</p>
                 </div>
 
                 <form className="form-stack" onSubmit={handleRegister}>
@@ -56,7 +56,7 @@ export default function RegisterPage() {
                             onChange={e => setUsername(e.target.value)}
                             autoComplete="username"
                             autoFocus
-                            placeholder="Choose username"
+                            placeholder="Choose a username"
                         />
                     </label>
                     <label className="field">
@@ -76,17 +76,17 @@ export default function RegisterPage() {
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             autoComplete="new-password"
-                            placeholder="Minimum 6 characters"
+                            placeholder="At least 6 characters"
                         />
                     </label>
                     <button className="button primary full" type="submit" disabled={loading}>
                         <Icon name="check" size={18} />
-                        {loading ? 'Creating account...' : 'Register'}
+                        {loading ? 'Creating your account…' : 'Create account'}
                     </button>
                 </form>
 
                 <p className="auth-switch">
-                    Already registered? <Link to="/login">Login</Link>
+                    Already have an account? <Link to="/login">Login</Link>
                 </p>
             </section>
         </main>

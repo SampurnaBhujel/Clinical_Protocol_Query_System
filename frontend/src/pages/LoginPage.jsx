@@ -36,7 +36,7 @@ export default function LoginPage() {
             login(token, decoded.role, decoded.sub)
             navigate(decoded.role === 'admin' ? '/admin' : '/chat')
         } catch (err) {
-            setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
+            setError(err.response?.data?.detail || 'We could not sign you in. Please check your credentials and try again.')
         } finally {
             setLoading(false)
         }
@@ -47,8 +47,8 @@ export default function LoginPage() {
             <section className="auth-card">
                 <div className="auth-heading">
                     <span className="auth-icon"><Icon name="logIn" size={22} /></span>
-                    <h1>Login</h1>
-                    <p>Access your patient chatbot or admin dashboard.</p>
+                    <h1>Welcome back</h1>
+                    <p>Sign in to continue to your chatbot or admin dashboard.</p>
                 </div>
 
                 <form className="form-stack" onSubmit={handleLogin}>
@@ -60,7 +60,7 @@ export default function LoginPage() {
                             onChange={e => setUsername(e.target.value)}
                             autoComplete="username"
                             autoFocus
-                            placeholder="Enter username"
+                            placeholder="Enter your username"
                         />
                     </label>
                     <label className="field">
@@ -70,17 +70,17 @@ export default function LoginPage() {
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             autoComplete="current-password"
-                            placeholder="Enter password"
+                            placeholder="Enter your password"
                         />
                     </label>
                     <button className="button primary full" type="submit" disabled={loading}>
                         <Icon name="lock" size={18} />
-                        {loading ? 'Signing in...' : 'Sign in'}
+                        {loading ? 'Signing in…' : 'Sign in'}
                     </button>
                 </form>
 
                 <p className="auth-switch">
-                    New patient? <Link to="/register">Create an account</Link>
+                    New here? <Link to="/register">Create an account</Link>
                 </p>
             </section>
         </main>
