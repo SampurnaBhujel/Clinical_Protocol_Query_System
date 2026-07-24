@@ -17,6 +17,7 @@ class ChunkMetadata:
     chunk_length: int
     heading_path: str
     content_type: str
+    indexed_at: str
 
     def to_dict(self) -> dict:
         # Chroma metadata must stay flat and scalar.

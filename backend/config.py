@@ -1,7 +1,38 @@
-# backend/config.py
+# # backend/config.py
+
+# from pydantic_settings import BaseSettings
+# from pathlib import Path
+
+# class Settings(BaseSettings):
+#     GEMINI_API_KEY: str
+#     GROQ_API_KEY: str
+
+#     SECRET_KEY: str
+#     ALGORITHM: str = "HS256"
+#     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+
+#     CHROMA_STORE_PATH: str = "chroma_db_nepali"
+#     DOCUMENTS_PATH: str = "documents"
+
+#     #EMBEDDING_MODEL: str = "jangedoo/all-MiniLM-L6-v2-nepali"
+#     EMBEDDING_MODEL: str = "intfloat/multilingual-e5-base"
+
+
+#     class Config:
+#         #env_file = Path(__file__).resolve().parent / ".env"
+#         #env_file = ".env"
+#         env_file = Path(__file__).resolve().parent / ".env"
+#         env_file_encoding = "utf-8"
+
+# settings = Settings()
+
+from pathlib import Path
 
 from pydantic_settings import BaseSettings
-from pathlib import Path
+
+
+BASE_DIR = Path(__file__).resolve().parent
+
 
 class Settings(BaseSettings):
     GEMINI_API_KEY: str
@@ -9,19 +40,16 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     CHROMA_STORE_PATH: str = "chroma_db_nepali"
     DOCUMENTS_PATH: str = "documents"
 
-    #EMBEDDING_MODEL: str = "jangedoo/all-MiniLM-L6-v2-nepali"
     EMBEDDING_MODEL: str = "intfloat/multilingual-e5-base"
 
-
     class Config:
-        #env_file = Path(__file__).resolve().parent / ".env"
-        #env_file = ".env"
-        env_file = Path(__file__).resolve().parent / ".env"
+        env_file = BASE_DIR / ".env"
         env_file_encoding = "utf-8"
+
 
 settings = Settings()

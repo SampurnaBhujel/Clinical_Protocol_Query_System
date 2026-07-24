@@ -1,3 +1,5 @@
+{/* frontend/src/pages/ChatPage.jsx */ }
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import axiosClient from '../api/axiosClient'
 import ResponseCard from '../components/ResponseCard'

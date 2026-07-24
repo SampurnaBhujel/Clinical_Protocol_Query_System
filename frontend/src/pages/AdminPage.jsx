@@ -1,3 +1,5 @@
+{/* frontend/src/pages/AdminPage.jsx */ }
+
 import { useState } from 'react'
 import DocumentUpload from '../components/DocumentUpload'
 import DocumentList from '../components/DocumentList'

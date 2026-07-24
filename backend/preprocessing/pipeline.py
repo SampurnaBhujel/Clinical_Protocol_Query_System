@@ -15,6 +15,10 @@ from preprocessing.embeddings import get_embeddings
 from preprocessing.parser import extract_pages
 from preprocessing.schemas import ChunkMetadata
 
+from resources import get_vectorstore
+
+from utils.time import now_nepal
+
 warnings.filterwarnings("ignore")
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
@@ -80,6 +84,7 @@ def index_pdf(filepath: str, filename: str) -> None:
                 chunk_length=len(chunk),
                 heading_path=_heading_path(section["chapter"], section["section"], section["subsection"]),
                 content_type=section["content_type"],
+                indexed_at=now_nepal().isoformat(),
             )
             metadata_dict = metadata.to_dict()
 
@@ -98,9 +103,10 @@ def index_pdf(filepath: str, filename: str) -> None:
     if not documents:
         raise ValueError(f"No structure-aware chunks were produced for {filename}")
 
-    vectorstore = Chroma(
-        persist_directory=settings.CHROMA_STORE_PATH,
-        embedding_function=get_embeddings(),
-        collection_name="clinical_docs"
-    )
+    # vectorstore = Chroma(
+    #     persist_directory=settings.CHROMA_STORE_PATH,
+    #     embedding_function=get_embeddings(),
+    #     collection_name="clinical_docs"
+    # )
+    vectorstore = get_vectorstore()
     vectorstore.add_documents(documents)

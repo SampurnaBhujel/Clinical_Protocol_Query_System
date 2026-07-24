@@ -6,7 +6,8 @@ import re
 import certifi
 import warnings
 import logging
-from datetime import datetime, timezone
+#from datetime import datetime, timezone
+from utils.time import now_nepal
 
 from langchain_chroma import Chroma
 from langchain_core.output_parsers import StrOutputParser
@@ -21,6 +22,8 @@ from rag.medical_synonyms import expand_query
 from rag.query_rewriter import rewrite_query
 from rag.reranker import rerank_chunks
 
+from resources import get_vectorstore
+
 os.environ["SSL_CERT_FILE"] = certifi.where()
 os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
@@ -30,6 +33,7 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 VECTOR_FETCH_K = 20
 MAX_EVIDENCE = 5
 MAX_CHROMA_DISTANCE = 1.45
+MAX_EXCERPT = 90
 RAG_LOG_PATH = os.path.join("logs", "rag_evaluation.jsonl")
 
 NO_ANSWER_EN = "I could not find this information in the available clinical documents."
@@ -179,11 +183,12 @@ def _context_from_evidence(evidence: list[dict]) -> str:
 
 
 def retrieve_evidence(search_query: str) -> tuple[str, list[dict], str]:
-    vectorstore = Chroma(
-        persist_directory=settings.CHROMA_STORE_PATH,
-        embedding_function=get_embeddings(),
-        collection_name="clinical_docs"
-    )
+    # vectorstore = Chroma(
+    #     persist_directory=settings.CHROMA_STORE_PATH,
+    #     embedding_function=get_embeddings(),
+    #     collection_name="clinical_docs"
+    # )
+    vectorstore = get_vectorstore()
     selected_route = "ALL"
     raw_results = _search_vectorstore(vectorstore, search_query)
 
@@ -217,7 +222,13 @@ def _source_payload(evidence: list[dict]) -> list[dict]:
         "heading_path": item["heading_path"],
         "page": item["page"],
         "chunk_id": item["chunk_id"],
-        "excerpt": item["text"][:260],
+        #"excerpt": item["text"][:260],
+        "excerpt": (
+            item["text"][:MAX_EXCERPT] + "..."
+            if len(item["text"]) > MAX_EXCERPT
+            else item["text"]
+    ),
+
     } for item in evidence]
 
 
@@ -232,7 +243,8 @@ def _log_rag_event(
 ) -> None:
     os.makedirs(os.path.dirname(RAG_LOG_PATH), exist_ok=True)
     event = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        #"timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": now_nepal().isoformat(),
         "conversation_id": conversation_id,
         "original_question": original_question,
         "rewritten_question": rewritten_question,

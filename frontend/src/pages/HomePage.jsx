@@ -1,8 +1,22 @@
+
 // frontend/src/components/HomePage.jsx
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Icon from '../components/Icon';
+
+// {/* frontend/src/pages/HomePage.jsx */ }
+
+// import { Link } from 'react-router-dom'
+// import { useAuth } from '../context/AuthContext'
+// import Icon from '../components/Icon'
+
+// const highlights = [
+//     ['Guideline-grounded answers', 'Searches indexed clinical PDFs instead of relying on open-ended chat.'],
+//     ['Nepali and English support', 'Patients can ask naturally in Nepali, English, or mixed language.'],
+//     ['Human-care disclaimer', 'Every response reminds users to consult qualified medical professionals.']
+// ]
+
 
 export default function HomePage() {
     const { token } = useAuth();

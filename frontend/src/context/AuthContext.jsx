@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
         }
     }
 
-const [token, setToken] = useState(getValidToken())
+    const [token, setToken] = useState(getValidToken())
 
     const [role, setRole] = useState(localStorage.getItem('role') || null)
     const [username, setUsername] = useState(localStorage.getItem('username') || null)
